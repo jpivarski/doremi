@@ -19,16 +19,18 @@ octave: upward_octave | downward_octave
 upward_octave: (DEGREE_UP* | INT) DEGREE_UP
 downward_octave: (DEGREE_DOWN* | INT) DEGREE_DOWN
 
-augmentation: upward_step | downward_step | upward_degree | downward_degree
+augmentation: upward_step | downward_step | upward_degree | downward_degree | ratio_tune
 upward_step: STEP_UP (STEP_UP* | INT)
 downward_step: STEP_DOWN (STEP_DOWN* | INT)
 upward_degree: DEGREE_UP (DEGREE_UP* | INT)
 downward_degree: DEGREE_DOWN (DEGREE_DOWN* | INT)
+ratio_tune: "*" ratio
 
 duration: dot_duration | ratio_duration
 dot_duration: DOTS
-ratio_duration: ":" INT ("/" INT)?
+ratio_duration: ":" ratio
 
+ratio: INT ("/" INT)?
 atom: WORD | "{" group+ "}"
 
 WORD: /[A-Za-z_#][A-Za-z_#0-9]+/
