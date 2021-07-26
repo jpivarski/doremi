@@ -4,5 +4,6 @@ from ._version import version as __version__
 
 import doremi.parsing
 import doremi.abstract
+import doremi.concrete
 
 __all__ = ("__version__",)

@@ -1,5 +1,7 @@
 # BSD 3-Clause License; see https://github.com/jpivarski/doremi/blob/main/LICENSE
 
+from fractions import Fraction
+
 from dataclasses import dataclass, field
 from typing import List, Optional, Union, Generator
 
@@ -46,24 +48,6 @@ class Call(Expression):
             return NotImplemented
 
 
-@dataclass
-class Ratio(AST):
-    numerator: int
-    denominator: int
-    parsingtree: Optional[lark.tree.Tree] = field(default=None)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.numerator}, {self.denominator})"
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return (
-                self.numerator * other.denominator == other.numerator * self.denominator
-            )
-        else:
-            return NotImplemented
-
-
 class Augmentation(AST):
     pass
 
@@ -100,7 +84,7 @@ class AugmentDegree(Augmentation):
 
 @dataclass
 class AugmentRatio(Augmentation):
-    amount: Ratio
+    amount: Fraction
     parsingtree: Optional[lark.tree.Tree] = field(default=None)
 
     def __repr__(self) -> str:
@@ -115,7 +99,7 @@ class AugmentRatio(Augmentation):
 
 @dataclass
 class Duration(AST):
-    amount: Ratio
+    amount: Fraction
     parsingtree: Optional[lark.tree.Tree] = field(default=None)
 
     def __repr__(self) -> str:
@@ -168,7 +152,6 @@ class Line(AST):
             return self.modified == other.modified
         else:
             return NotImplemented
-
 
 @dataclass
 class Assignment(AST):
@@ -353,7 +336,7 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                 assert isinstance(subnode, lark.tree.Tree)
 
                 if subnode.data == "dot_duration":
-                    duration = Duration(Ratio(len(subnode.children), 1), subnode)
+                    duration = Duration(Fraction(len(subnode.children), 1))
                 elif subnode.data == "ratio_duration":
                     ints = subnode.children[0].children
                     assert all(
@@ -361,9 +344,9 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                         for x in ints
                     )
                     if len(ints) == 1:
-                        ratio = Ratio(int(ints[0]), 1, subnode.children[0])
+                        ratio = Fraction(int(ints[0]), 1)
                     elif len(ints) == 2:
-                        ratio = Ratio(int(ints[0]), int(ints[1]), subnode.children[0])
+                        ratio = Fraction(int(ints[0]), int(ints[1]))
                     else:
                         raise AssertionError(subnode.children[0])
                     duration = Duration(ratio, subnode)
@@ -373,7 +356,7 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                 index -= 1
 
             else:
-                duration = Duration(Ratio(1, 1))
+                duration = Duration(Fraction(1, 1))
 
             if node.children[index].data == "augmentation":
                 subnode = node.children[index].children[0]
@@ -411,9 +394,9 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                         for x in ints
                     )
                     if len(ints) == 1:
-                        ratio = Ratio(int(ints[0]), 1, subnode.children[0])
+                        ratio = Fraction(int(ints[0]), 1)
                     elif len(ints) == 2:
-                        ratio = Ratio(int(ints[0]), int(ints[1]), subnode.children[0])
+                        ratio = Fraction(int(ints[0]), int(ints[1]))
                     else:
                         raise AssertionError(subnode.children[0])
                     augmentation = AugmentRatio(ratio, subnode)

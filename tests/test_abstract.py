@@ -1,5 +1,7 @@
 # BSD 3-Clause License; see https://github.com/jpivarski/doremi/blob/main/LICENSE
 
+from fractions import Fraction
+
 from lark.tree import Tree
 from lark.lexer import Token
 
@@ -9,7 +11,6 @@ from doremi.abstract import (
     AugmentStep,
     AugmentDegree,
     AugmentRatio,
-    Ratio,
     Duration,
     Modified,
     Line,
@@ -22,7 +23,7 @@ from doremi.abstract import (
 
 def test_decorations():
     aug = AugmentStep(0)
-    dur = Duration(Ratio(1, 1))
+    dur = Duration(Fraction(1, 1))
 
     assert abstracttree("la") == Passages(
         [Passage(None, [Line([Modified(Word("la"), 0, 0, aug, dur, 1)])])]
@@ -83,7 +84,7 @@ def test_decorations():
         [
             Passage(
                 None,
-                [Line([Modified(Word("la"), 0, 0, AugmentRatio(Ratio(2, 1)), dur, 1)])],
+                [Line([Modified(Word("la"), 0, 0, AugmentRatio(Fraction(2, 1)), dur, 1)])],
             )
         ]
     )
@@ -91,7 +92,7 @@ def test_decorations():
         [
             Passage(
                 None,
-                [Line([Modified(Word("la"), 0, 0, AugmentRatio(Ratio(2, 3)), dur, 1)])],
+                [Line([Modified(Word("la"), 0, 0, AugmentRatio(Fraction(2, 3)), dur, 1)])],
             )
         ]
     )
@@ -100,7 +101,7 @@ def test_decorations():
         [
             Passage(
                 None,
-                [Line([Modified(Word("la"), 0, 0, aug, Duration(Ratio(3, 1)), 1)])],
+                [Line([Modified(Word("la"), 0, 0, aug, Duration(Fraction(3, 1)), 1)])],
             )
         ]
     )
@@ -108,7 +109,7 @@ def test_decorations():
         [
             Passage(
                 None,
-                [Line([Modified(Word("la"), 0, 0, aug, Duration(Ratio(3, 1)), 1)])],
+                [Line([Modified(Word("la"), 0, 0, aug, Duration(Fraction(3, 1)), 1)])],
             )
         ]
     )
@@ -116,7 +117,7 @@ def test_decorations():
         [
             Passage(
                 None,
-                [Line([Modified(Word("la"), 0, 0, aug, Duration(Ratio(3, 2)), 1)])],
+                [Line([Modified(Word("la"), 0, 0, aug, Duration(Fraction(3, 2)), 1)])],
             )
         ]
     )
@@ -124,7 +125,7 @@ def test_decorations():
         [
             Passage(
                 None,
-                [Line([Modified(Word("la"), 0, 0, aug, Duration(Ratio(3, 2)), 1)])],
+                [Line([Modified(Word("la"), 0, 0, aug, Duration(Fraction(3, 2)), 1)])],
             )
         ]
     )
@@ -145,7 +146,7 @@ def test_decorations():
                                 1,
                                 1,
                                 AugmentStep(1),
-                                Duration(Ratio(3, 1)),
+                                Duration(Fraction(3, 1)),
                                 4,
                             )
                         ]
@@ -159,9 +160,9 @@ def test_decorations():
 def test_call():
     aug = AugmentStep(0)
     aug1 = AugmentStep(1)
-    dur = Duration(Ratio(1, 1))
-    dur3 = Duration(Ratio(3, 1))
-    dur32 = Duration(Ratio(3, 2))
+    dur = Duration(Fraction(1, 1))
+    dur3 = Duration(Fraction(3, 1))
+    dur32 = Duration(Fraction(3, 2))
 
     x = Modified(Word("x"), 0, 0, aug, dur, 1)
     y = Modified(Word("y"), 0, 0, aug, dur, 1)
@@ -214,9 +215,9 @@ def test_call():
 def test_modified():
     aug = AugmentStep(0)
     aug1 = AugmentStep(1)
-    dur = Duration(Ratio(1, 1))
-    dur3 = Duration(Ratio(3, 1))
-    dur32 = Duration(Ratio(3, 2))
+    dur = Duration(Fraction(1, 1))
+    dur3 = Duration(Fraction(3, 1))
+    dur32 = Duration(Fraction(3, 2))
 
     la = Modified(Word("la"), 0, 0, aug, dur, 1)
 
@@ -248,8 +249,8 @@ def test_modified():
 
 
 def test_passage():
-    do = Modified(Word("do"), 0, 0, AugmentStep(0), Duration(Ratio(1, 1)), 1)
-    la = Modified(Word("la"), 0, 0, AugmentStep(0), Duration(Ratio(1, 1)), 1)
+    do = Modified(Word("do"), 0, 0, AugmentStep(0), Duration(Fraction(1, 1)), 1)
+    la = Modified(Word("la"), 0, 0, AugmentStep(0), Duration(Fraction(1, 1)), 1)
 
     assert abstracttree("do") == Passages([Passage(None, [Line([do])])])
     assert abstracttree("do\nla") == Passages([Passage(None, [Line([do]), Line([la])])])
@@ -325,8 +326,8 @@ def test_passage():
 
 
 def test_comments():
-    do = Modified(Word("do"), 0, 0, AugmentStep(0), Duration(Ratio(1, 1)), 1)
-    la = Modified(Word("la"), 0, 0, AugmentStep(0), Duration(Ratio(1, 1)), 1)
+    do = Modified(Word("do"), 0, 0, AugmentStep(0), Duration(Fraction(1, 1)), 1)
+    la = Modified(Word("la"), 0, 0, AugmentStep(0), Duration(Fraction(1, 1)), 1)
 
     assert abstracttree("""do""").comments == []
     assert (
