@@ -2,11 +2,12 @@
 
 import lark
 
-grammar = r"""
-start: BLANK* lhs_passage (BLANK+ lhs_passage)* BLANK*
 
-lhs_passage: lhs "=" BLANK? passage | passage
-lhs: WORD | WORD "(" defargs? ")"
+grammar = r"""
+start: BLANK* assign_passage (BLANK BLANK+ assign_passage)* BLANK_END*
+
+assign_passage: assign "=" BLANK? passage | passage
+assign: WORD | WORD "(" defargs? ")"
 defargs: WORD ("," WORD)*
 passage: line (BLANK line)*
 
@@ -45,7 +46,8 @@ DEGREE_UP: ">"
 DEGREE_DOWN: "<"
 ABSOLUTE: "@"
 DOT: "."
-BLANK: /(\n|\#[^\n]*\n|\#[^\n]*)/
+BLANK: /(\n|\#[^\n]*\n)/
+BLANK_END: /(\n|\#[^\n]*\n|\#[^\n]*)/
 
 %import common.SH_COMMENT
 %import common.CR

@@ -70,67 +70,67 @@ class Augmentation(AST):
 
 @dataclass
 class AugmentStep(Augmentation):
-    val: int
+    amount: int
     parsingtree: Optional[lark.tree.Tree] = field(default=None)
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.val})"
+        return f"{type(self).__name__}({self.amount})"
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
-            return self.val == other.val
+            return self.amount == other.amount
         else:
             return NotImplemented
 
 
 @dataclass
 class AugmentDegree(Augmentation):
-    val: int
+    amount: int
     parsingtree: Optional[lark.tree.Tree] = field(default=None)
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.val})"
+        return f"{type(self).__name__}({self.amount})"
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
-            return self.val == other.val
+            return self.amount == other.amount
         else:
             return NotImplemented
 
 
 @dataclass
 class AugmentRatio(Augmentation):
-    val: Ratio
+    amount: Ratio
     parsingtree: Optional[lark.tree.Tree] = field(default=None)
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.val})"
+        return f"{type(self).__name__}({self.amount})"
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
-            return self.val == other.val
+            return self.amount == other.amount
         else:
             return NotImplemented
 
 
 @dataclass
 class Duration(AST):
-    val: Ratio
+    amount: Ratio
     parsingtree: Optional[lark.tree.Tree] = field(default=None)
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.val})"
+        return f"{type(self).__name__}({self.amount})"
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
-            return self.val == other.val
+            return self.amount == other.amount
         else:
             return NotImplemented
 
 
 @dataclass
 class Modified(AST):
-    val: Union[Expression, List[Expression]]
+    expression: Union[Expression, List[Expression]]
     absolute: int
     octave: int
     augmentation: Augmentation
@@ -139,12 +139,12 @@ class Modified(AST):
     parsingtree: Optional[lark.tree.Tree] = field(default=None)
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.val}, {self.absolute}, {self.octave}, {self.augmentation}, {self.duration}, {self.repetition})"
+        return f"{type(self).__name__}({self.expression}, {self.absolute}, {self.octave}, {self.augmentation}, {self.duration}, {self.repetition})"
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
             return (
-                self.val == other.val
+                self.expression == other.expression
                 and self.absolute == other.absolute
                 and self.octave == other.octave
                 and self.augmentation == other.augmentation
@@ -157,48 +157,64 @@ class Modified(AST):
 
 @dataclass
 class Line(AST):
-    val: List[Modified]
+    modified: List[Modified]
     parsingtree: Optional[lark.tree.Tree] = field(default=None)
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.val})"
+        return f"{type(self).__name__}({self.modified})"
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
-            return self.val == other.val
+            return self.modified == other.modified
+        else:
+            return NotImplemented
+
+
+@dataclass
+class Assignment(AST):
+    function: Word
+    args: List[Word]
+    parsingtree: Optional[lark.tree.Tree] = field(default=None)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.function}, {self.args})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
+            return self.function == other.function and self.args == other.args
         else:
             return NotImplemented
 
 
 @dataclass
 class Passage(AST):
-    # lhs: Optional
-    val: List[Line]
+    assignment: Optional[Assignment]
+    lines: List[Line]
     parsingtree: Optional[lark.tree.Tree] = field(default=None)
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.val})"  # LHS
+        return f"{type(self).__name__}({self.assignment}, {self.lines})"
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
-            return self.val == other.val  # LHS
+            return self.assignment == other.assignment and self.lines == other.lines
         else:
             return NotImplemented
 
 
 @dataclass
 class Passages(AST):
-    val: List[Passage]
+    nodes: List[Passage]
     comments: Optional[List[lark.lexer.Token]] = field(default=None)
     parsingtree: Optional[lark.tree.Tree] = field(default=None)
     source: Optional[str] = field(default=None)
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.val})"
+        return f"{type(self).__name__}({self.nodes})"
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
-            return self.val == other.val
+            return self.nodes == other.nodes
         else:
             return NotImplemented
 
@@ -210,7 +226,7 @@ def get_comments(
         if node.data == "start":
             for child in node.children:
                 yield from get_comments(child)
-        elif node.data == "lhs_passage":
+        elif node.data == "assign_passage":
             for child in node.children:
                 yield from get_comments(child)
         elif node.data == "passage":
@@ -218,11 +234,13 @@ def get_comments(
                 yield from get_comments(child)
         elif node.data == "line":
             pass
+        elif node.data == "assign":
+            pass
         else:
             raise AssertionError(repr(node))
 
     else:
-        if node.type == "BLANK":
+        if node.type == "BLANK" or node.type == "BLANK_END":
             yield node
         else:
             raise AssertionError(repr(node))
@@ -230,16 +248,20 @@ def get_comments(
 
 def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
     if isinstance(node, lark.tree.Tree):
-        if node.data == "lhs_passage":
-            if len(node.children) == 3:
-                raise NotImplementedError
-            else:
-                assert len(node.children) == 1
+        if node.data == "assign_passage":
+            subnodes = [x for x in node.children if isinstance(x, lark.tree.Tree)]
 
-            passage = node.children[-1]
+            if len(subnodes) == 2:
+                assignment = to_ast(subnodes[0])
+            else:
+                assert len(subnodes) == 1
+                assignment = None
+
+            passage = subnodes[-1]
             assert isinstance(passage, lark.tree.Tree) and passage.data == "passage"
 
             return Passage(
+                assignment,
                 [
                     to_ast(x)
                     for x in passage.children
@@ -247,6 +269,28 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                 ],
                 node,
             )
+
+        elif node.data == "assign":
+            assert 1 <= len(node.children) <= 2
+
+            subnode1 = node.children[0]
+            assert isinstance(subnode1, lark.lexer.Token) and subnode1.type == "WORD"
+            function = Word(subnode1)
+
+            if len(node.children) == 2:
+                subnode2 = node.children[1]
+                assert (
+                    isinstance(subnode2, lark.tree.Tree) and subnode2.data == "defargs"
+                )
+                assert all(
+                    isinstance(x, lark.lexer.Token) and x.type == "WORD"
+                    for x in subnode2.children
+                )
+                args = [Word(x) for x in subnode2.children]
+            else:
+                args = []
+
+            return Assignment(function, args, node)
 
         elif node.data == "line":
             return Line([to_ast(x) for x in node.children], node)
