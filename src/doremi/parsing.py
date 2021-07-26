@@ -11,7 +11,7 @@ defargs: WORD ("," WORD)*
 passage: line (BLANK line)*
 
 line: modified+
-modified: absolute? octave? expression augmentation? duration?
+modified: absolute? octave? expression augmentation? duration? repetition?
 
 absolute: ABSOLUTE+
 
@@ -29,6 +29,8 @@ ratio_tune: "*" ratio
 duration: dot_duration | ratio_duration
 dot_duration: DOT+
 ratio_duration: ":" ratio
+
+repetition: "~" POSITIVE_INT
 
 ratio: POSITIVE_INT ("/" POSITIVE_INT)?
 expression: WORD | WORD "(" args? ")" | "{" modified+ "}"

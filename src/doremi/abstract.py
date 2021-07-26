@@ -30,7 +30,6 @@ class Word(Expression):
             return NotImplemented
 
 
-
 @dataclass
 class Call(Expression):
     function: Word
@@ -136,10 +135,11 @@ class Modified(AST):
     octave: int
     augmentation: Augmentation
     duration: Duration
+    repetition: int
     parsingtree: Optional[lark.tree.Tree] = field(default=None)
 
     def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.val}, {self.absolute}, {self.octave}, {self.augmentation}, {self.duration})"
+        return f"{type(self).__name__}({self.val}, {self.absolute}, {self.octave}, {self.augmentation}, {self.duration}, {self.repetition})"
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
@@ -149,6 +149,7 @@ class Modified(AST):
                 and self.octave == other.octave
                 and self.augmentation == other.augmentation
                 and self.duration == other.duration
+                and self.repetition == other.repetition
             )
         else:
             return NotImplemented
@@ -252,7 +253,7 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
 
         elif node.data == "modified":
             assert all(isinstance(x, lark.tree.Tree) for x in node.children)
-            assert 1 <= len(node.children) <= 5
+            assert 1 <= len(node.children) <= 6
             index = 0
 
             if node.children[index].data == "absolute":
@@ -284,7 +285,10 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                 else:
                     function = to_ast(subnode.children[0])
                     subsubnode = subnode.children[1]
-                    assert isinstance(subsubnode, lark.tree.Tree) and subsubnode.data == "args"
+                    assert (
+                        isinstance(subsubnode, lark.tree.Tree)
+                        and subsubnode.data == "args"
+                    )
                     args = [to_ast(x) for x in subsubnode.children]
                     expression = Call(function, args)
 
@@ -292,6 +296,13 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                 expression = [to_ast(x) for x in subnode.children]
 
             index = -1
+
+            if node.children[index].data == "repetition":
+                repetition = int(node.children[index].children[0])
+                index -= 1
+
+            else:
+                repetition = 1
 
             if node.children[index].data == "duration":
                 subnode = node.children[index].children[0]
@@ -368,7 +379,9 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
             else:
                 augmentation = AugmentStep(0)
 
-            return Modified(expression, absolute, octave, augmentation, duration, node)
+            return Modified(
+                expression, absolute, octave, augmentation, duration, repetition, node
+            )
 
         raise AssertionError(repr(node))
 
