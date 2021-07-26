@@ -12,8 +12,12 @@ class AST:
     pass
 
 
+class Expression(AST):
+    pass
+
+
 @dataclass
-class Word(AST):
+class Word(Expression):
     val: lark.lexer.Token
 
     def __repr__(self) -> str:
@@ -22,6 +26,23 @@ class Word(AST):
     def __eq__(self, other: object) -> bool:
         if isinstance(other, type(self)):
             return self.val == other.val
+        else:
+            return NotImplemented
+
+
+
+@dataclass
+class Call(Expression):
+    function: Word
+    args: List[Expression]
+    parsingtree: Optional[lark.tree.Tree] = field(default=None)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.function}, {self.args})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
+            return self.function == other.function and self.args == other.args
         else:
             return NotImplemented
 
@@ -109,8 +130,8 @@ class Duration(AST):
 
 
 @dataclass
-class Group(AST):
-    val: Union[Word, List["Group"]]
+class Modified(AST):
+    val: Union[Expression, List[Expression]]
     absolute: int
     octave: int
     augmentation: Augmentation
@@ -135,7 +156,7 @@ class Group(AST):
 
 @dataclass
 class Line(AST):
-    val: List[Group]
+    val: List[Modified]
     parsingtree: Optional[lark.tree.Tree] = field(default=None)
 
     def __repr__(self) -> str:
@@ -229,7 +250,7 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
         elif node.data == "line":
             return Line([to_ast(x) for x in node.children], node)
 
-        elif node.data == "group":
+        elif node.data == "modified":
             assert all(isinstance(x, lark.tree.Tree) for x in node.children)
             assert 1 <= len(node.children) <= 5
             index = 0
@@ -253,11 +274,22 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
             else:
                 octave = 0
 
-            assert node.children[index].data == "atom"
-            if isinstance(node.children[index].children[0], lark.lexer.Token):
-                atom = to_ast(node.children[index].children[0])
+            subnode = node.children[index]
+            assert subnode.data == "expression"
+
+            if isinstance(subnode.children[0], lark.lexer.Token):
+                if len(subnode.children) == 1:
+                    expression = to_ast(subnode.children[0])
+
+                else:
+                    function = to_ast(subnode.children[0])
+                    subsubnode = subnode.children[1]
+                    assert isinstance(subsubnode, lark.tree.Tree) and subsubnode.data == "args"
+                    args = [to_ast(x) for x in subsubnode.children]
+                    expression = Call(function, args)
+
             else:
-                raise NotImplementedError
+                expression = [to_ast(x) for x in subnode.children]
 
             index = -1
 
@@ -336,7 +368,7 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
             else:
                 augmentation = AugmentStep(0)
 
-            return Group(atom, absolute, octave, augmentation, duration, node)
+            return Modified(expression, absolute, octave, augmentation, duration, node)
 
         raise AssertionError(repr(node))
 

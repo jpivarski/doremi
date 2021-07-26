@@ -6,12 +6,12 @@ grammar = r"""
 start: BLANK* lhs_passage (BLANK+ lhs_passage)* BLANK*
 
 lhs_passage: lhs "=" BLANK? passage | passage
-lhs: WORD | WORD "(" args? ")"
-args: WORD ("," WORD)*
+lhs: WORD | WORD "(" defargs? ")"
+defargs: WORD ("," WORD)*
 passage: line (BLANK line)*
 
-line: group+
-group: absolute? octave? atom augmentation? duration?
+line: modified+
+modified: absolute? octave? expression augmentation? duration?
 
 absolute: ABSOLUTE+
 
@@ -31,11 +31,12 @@ dot_duration: DOT+
 ratio_duration: ":" ratio
 
 ratio: POSITIVE_INT ("/" POSITIVE_INT)?
-atom: WORD | "{" group+ "}"
+expression: WORD | WORD "(" args? ")" | "{" modified+ "}"
+args: modified ("," modified)*
 
 INT: /(0|[1-9][0-9]*)/
 POSITIVE_INT: /[1-9][0-9]*/
-WORD: /[A-Za-z_#][A-Za-z_#0-9]+/
+WORD: /[A-Za-z_#][A-Za-z_#0-9]*/
 STEP_UP: "+"
 STEP_DOWN: "-"
 DEGREE_UP: ">"
