@@ -1,7 +1,6 @@
 # BSD 3-Clause License; see https://github.com/jpivarski/doremi/blob/main/LICENSE
 
 from fractions import Fraction
-
 from dataclasses import dataclass, field
 from typing import List, Optional, Union, Generator
 
@@ -108,8 +107,8 @@ class Passage(AST):
 
 
 @dataclass
-class Passages(AST):
-    nodes: List[Passage]
+class Composition(AST):
+    passages: List[Passage]
     comments: Optional[List[lark.lexer.Token]] = field(
         default=None, repr=False, compare=False, hash=False
     )
@@ -348,4 +347,4 @@ def abstracttree(source: str) -> AST:
     passages = [
         to_ast(x) for x in parsingtree.children if not isinstance(x, lark.lexer.Token)
     ]
-    return Passages(passages, comments, parsingtree, source)
+    return Composition(passages, comments, parsingtree, source)
