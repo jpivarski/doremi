@@ -322,3 +322,244 @@ def test_passage():
             Passage(None, [Line([la])]),
         ]
     )
+
+
+def test_comments():
+    do = Modified(Word("do"), 0, 0, AugmentStep(0), Duration(Ratio(1, 1)), 1)
+    la = Modified(Word("la"), 0, 0, AugmentStep(0), Duration(Ratio(1, 1)), 1)
+
+    assert abstracttree("""do""").comments == []
+    assert (
+        abstracttree(
+            """do
+"""
+        ).comments
+        == ["\n"]
+    )
+    assert abstracttree("""do | one""").comments == ["| one"]
+    assert (
+        abstracttree(
+            """do | one
+"""
+        ).comments
+        == ["| one\n"]
+    )
+    assert abstracttree("""do |one""").comments == ["|one"]
+    assert (
+        abstracttree(
+            """do |one
+"""
+        ).comments
+        == ["|one\n"]
+    )
+    assert (
+        abstracttree(
+            """do
+la"""
+        ).comments
+        == ["\n"]
+    )
+    assert (
+        abstracttree(
+            """do
+la
+"""
+        ).comments
+        == ["\n", "\n"]
+    )
+    assert (
+        abstracttree(
+            """do   
+la"""
+        ).comments
+        == ["\n"]
+    )
+    assert (
+        abstracttree(
+            """do   
+la
+"""
+        ).comments
+        == ["\n", "\n"]
+    )
+    assert (
+        abstracttree(
+            """do | one
+la"""
+        ).comments
+        == ["| one\n"]
+    )
+    assert (
+        abstracttree(
+            """do | one
+la
+"""
+        ).comments
+        == ["| one\n", "\n"]
+    )
+    assert (
+        abstracttree(
+            """do | one
+la | two"""
+        ).comments
+        == ["| one\n", "| two"]
+    )
+    assert (
+        abstracttree(
+            """do | one
+la | two
+"""
+        ).comments
+        == ["| one\n", "| two\n"]
+    )
+    assert (
+        abstracttree(
+            """do | one
+la | two"""
+        )
+        == Passages([Passage(None, [Line([do]), Line([la])])])
+    )
+    assert (
+        abstracttree(
+            """do | one
+la | two
+"""
+        )
+        == Passages([Passage(None, [Line([do]), Line([la])])])
+    )
+    assert (
+        abstracttree(
+            """do
+la | two"""
+        ).comments
+        == ["\n", "| two"]
+    )
+    assert (
+        abstracttree(
+            """do
+la | two
+"""
+        ).comments
+        == ["\n", "| two\n"]
+    )
+    assert (
+        abstracttree(
+            """do   
+la | two"""
+        ).comments
+        == ["\n", "| two"]
+    )
+    assert (
+        abstracttree(
+            """do   
+la | two
+"""
+        ).comments
+        == ["\n", "| two\n"]
+    )
+    assert (
+        abstracttree(
+            """do
+| two
+la | three"""
+        ).comments
+        == ["\n", "| two\n", "| three"]
+    )
+    assert (
+        abstracttree(
+            """do
+| two
+la | three
+"""
+        ).comments
+        == ["\n", "| two\n", "| three\n"]
+    )
+    assert (
+        abstracttree(
+            """do
+| two
+la | three"""
+        )
+        == Passages([Passage(None, [Line([do])]), Passage(None, [Line([la])])])
+    )
+    assert (
+        abstracttree(
+            """do
+| two
+la | three
+"""
+        )
+        == Passages([Passage(None, [Line([do])]), Passage(None, [Line([la])])])
+    )
+    assert abstracttree("""f = do | one""").comments == ["| one"]
+    assert (
+        abstracttree(
+            """f = do | one
+"""
+        ).comments
+        == ["| one\n"]
+    )
+    assert (
+        abstracttree(
+            """f =
+do | two"""
+        ).comments
+        == ["\n", "| two"]
+    )
+    assert (
+        abstracttree(
+            """f =
+do | two
+"""
+        ).comments
+        == ["\n", "| two\n"]
+    )
+    assert (
+        abstracttree(
+            """f = | one
+do | two"""
+        ).comments
+        == ["| one\n", "| two"]
+    )
+    assert (
+        abstracttree(
+            """f = | one
+do | two
+"""
+        ).comments
+        == ["| one\n", "| two\n"]
+    )
+    assert (
+        abstracttree(
+            """| one
+f =
+do | three"""
+        ).comments
+        == ["| one\n", "\n", "| three"]
+    )
+    assert (
+        abstracttree(
+            """| one
+f =
+do | three
+"""
+        ).comments
+        == ["| one\n", "\n", "| three\n"]
+    )
+    assert (
+        abstracttree(
+            """| one
+f = | two
+do | three"""
+        ).comments
+        == ["| one\n", "| two\n", "| three"]
+    )
+    assert (
+        abstracttree(
+            """| one
+f = | two
+do | three
+"""
+        ).comments
+        == ["| one\n", "| two\n", "| three\n"]
+    )

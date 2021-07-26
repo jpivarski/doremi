@@ -39,21 +39,17 @@ args: modified ("," modified)*
 
 INT: /(0|[1-9][0-9]*)/
 POSITIVE_INT: /[1-9][0-9]*/
-WORD: /[A-Za-z_#][A-Za-z_#0-9]*/
+WORD: /[A-Za-z_][A-Za-z_#0-9]*/
 STEP_UP: "+"
 STEP_DOWN: "-"
 DEGREE_UP: ">"
 DEGREE_DOWN: "<"
 ABSOLUTE: "@"
 DOT: "."
-BLANK: /(\n|\#[^\n]*\n)/
-BLANK_END: /(\n|\#[^\n]*\n|\#[^\n]*)/
+BLANK: /(\n|\|[^\n]*\n)/
+BLANK_END: /(\n|\|[^\n]*\n|\|[^\n]*)/
 
-%import common.SH_COMMENT
-%import common.CR
-%import common.LF
 %import common.WS_INLINE
-
 %ignore WS_INLINE
 """
 
