@@ -3,16 +3,15 @@
 import lark
 
 grammar = r"""
-start: blank* lhs_passages blank*
+start: BLANK* lhs_passage (BLANK+ lhs_passage)* BLANK*
 
-lhs_passages: lhs_passage (blank+ lhs_passage)+
-lhs_passage: lhs "=" blank? passage | passage
-lhs: word | word "(" args? ")"
-args: word ("," word)*
-passage: line (blank line)*
+lhs_passage: lhs "=" BLANK? passage | passage
+lhs: WORD | WORD "(" args? ")"
+args: WORD ("," WORD)*
+passage: line (BLANK line)*
 
-line: decorated+
-decorated: absolute? octave? atom augmentation? duration?
+line: group+
+group: absolute? octave? atom augmentation? duration?
 
 absolute: ABSOLUTE+
 
@@ -27,19 +26,19 @@ upward_degree: DEGREE_UP (DEGREE_UP* | INT)
 downward_degree: DEGREE_DOWN (DEGREE_DOWN* | INT)
 
 duration: dot_duration | ratio_duration
-dot_duration: DOT+
+dot_duration: DOTS
 ratio_duration: ":" INT ("/" INT)?
 
-atom: word | "{" decorated+ "}"
-word: /[A-Za-z_#][A-Za-z_#0-9]+/
+atom: WORD | "{" group+ "}"
 
+WORD: /[A-Za-z_#][A-Za-z_#0-9]+/
 STEP_UP: "+"
 STEP_DOWN: "-"
 DEGREE_UP: ">"
 DEGREE_DOWN: "<"
 ABSOLUTE: "@"
-DOT: "."
-blank: /([ \t]*\#[^\n]*)?\n/
+DOTS: /\.+/
+BLANK: /(\n|\#[^\n]*\n|\#[^\n]*)/
 
 %import common.SH_COMMENT
 %import common.INT
@@ -50,13 +49,9 @@ blank: /([ \t]*\#[^\n]*)?\n/
 %ignore WS_INLINE
 """
 
-parser = lark.Lark(grammar)
+def parsingtree(source: str) -> lark.tree.Tree:
+    return parsingtree.parser.parse(source)
 
-print(parser.parse("""
-# stuff
-hello>2... there.. @@@you:12
+parsingtree.parser = lark.Lark(grammar)
 
-some(one, two) = {hey 2>wow}:12/3
-things
-
-""").pretty())
+__all__ = ("parser")
