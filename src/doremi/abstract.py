@@ -1,6 +1,6 @@
 # BSD 3-Clause License; see https://github.com/jpivarski/doremi/blob/main/LICENSE
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, Union, Generator
 
 import lark
@@ -16,24 +16,96 @@ class AST:
 class Word(AST):
     val: lark.lexer.Token
 
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({str(self.val)!r})"
 
-@dataclass
-class Augmentation(AST):
-    val: int
-    parsingtree: Optional[lark.tree.Tree]
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
+            return self.val == other.val
+        else:
+            return NotImplemented
 
 
 @dataclass
 class Ratio(AST):
     numerator: int
     denominator: int
-    parsingtree: Optional[lark.tree.Tree]
+    parsingtree: Optional[lark.tree.Tree] = field(default=None)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.numerator}, {self.denominator})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
+            return (
+                self.numerator * other.denominator == other.numerator * self.denominator
+            )
+        else:
+            return NotImplemented
+
+
+class Augmentation(AST):
+    pass
+
+
+@dataclass
+class AugmentStep(Augmentation):
+    val: int
+    parsingtree: Optional[lark.tree.Tree] = field(default=None)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.val})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
+            return self.val == other.val
+        else:
+            return NotImplemented
+
+
+@dataclass
+class AugmentDegree(Augmentation):
+    val: int
+    parsingtree: Optional[lark.tree.Tree] = field(default=None)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.val})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
+            return self.val == other.val
+        else:
+            return NotImplemented
+
+
+@dataclass
+class AugmentRatio(Augmentation):
+    val: Ratio
+    parsingtree: Optional[lark.tree.Tree] = field(default=None)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.val})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
+            return self.val == other.val
+        else:
+            return NotImplemented
 
 
 @dataclass
 class Duration(AST):
     val: Ratio
-    parsingtree: Optional[lark.tree.Tree]
+    parsingtree: Optional[lark.tree.Tree] = field(default=None)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.val})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
+            return self.val == other.val
+        else:
+            return NotImplemented
 
 
 @dataclass
@@ -43,31 +115,75 @@ class Group(AST):
     octave: int
     augmentation: Augmentation
     duration: Duration
-    parsingtree: lark.tree.Tree
+    parsingtree: Optional[lark.tree.Tree] = field(default=None)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.val}, {self.absolute}, {self.octave}, {self.augmentation}, {self.duration})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
+            return (
+                self.val == other.val
+                and self.absolute == other.absolute
+                and self.octave == other.octave
+                and self.augmentation == other.augmentation
+                and self.duration == other.duration
+            )
+        else:
+            return NotImplemented
 
 
 @dataclass
 class Line(AST):
     val: List[Group]
-    parsingtree: lark.tree.Tree
+    parsingtree: Optional[lark.tree.Tree] = field(default=None)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.val})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
+            return self.val == other.val
+        else:
+            return NotImplemented
 
 
 @dataclass
 class Passage(AST):
-    # lhs: Option
+    # lhs: Optional
     val: List[Line]
-    parsingtree: lark.tree.Tree
+    parsingtree: Optional[lark.tree.Tree] = field(default=None)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.val})"  # LHS
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
+            return self.val == other.val  # LHS
+        else:
+            return NotImplemented
 
 
 @dataclass
 class Passages(AST):
     val: List[Passage]
-    comments: List[lark.lexer.Token]
-    parsingtree: lark.tree.Tree
-    source: str
+    comments: Optional[List[lark.lexer.Token]] = field(default=None)
+    parsingtree: Optional[lark.tree.Tree] = field(default=None)
+    source: Optional[str] = field(default=None)
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.val})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, type(self)):
+            return self.val == other.val
+        else:
+            return NotImplemented
 
 
-def get_comments(node: Union[lark.tree.Tree, lark.lexer.Token]) -> Generator[str, None, None]:
+def get_comments(
+    node: Union[lark.tree.Tree, lark.lexer.Token]
+) -> Generator[str, None, None]:
     if isinstance(node, lark.tree.Tree):
         if node.data == "start":
             for child in node.children:
@@ -91,8 +207,6 @@ def get_comments(node: Union[lark.tree.Tree, lark.lexer.Token]) -> Generator[str
 
 
 def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
-    print(repr(node))
-
     if isinstance(node, lark.tree.Tree):
         if node.data == "lhs_passage":
             if len(node.children) == 3:
@@ -103,9 +217,14 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
             passage = node.children[-1]
             assert isinstance(passage, lark.tree.Tree) and passage.data == "passage"
 
-            return Passage([
-                to_ast(x) for x in passage.children if not isinstance(x, lark.lexer.Token)
-            ], node)
+            return Passage(
+                [
+                    to_ast(x)
+                    for x in passage.children
+                    if not isinstance(x, lark.lexer.Token)
+                ],
+                node,
+            )
 
         elif node.data == "line":
             return Line([to_ast(x) for x in node.children], node)
@@ -116,13 +235,20 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
             index = 0
 
             if node.children[index].data == "absolute":
-                raise NotImplementedError
+                absolute = len(node.children[index].children)
                 index += 1
             else:
                 absolute = 0
 
             if node.children[index].data == "octave":
-                raise NotImplementedError
+                subnode = node.children[index].children[0].children
+                assert all(isinstance(x, lark.lexer.Token) for x in subnode)
+                if subnode[0].type == "INT":
+                    octave = int(subnode[0])
+                else:
+                    octave = len(subnode)
+                if subnode[-1].type == "DEGREE_DOWN":
+                    octave *= -1
                 index += 1
             else:
                 octave = 0
@@ -136,16 +262,79 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
             index = -1
 
             if node.children[index].data == "duration":
-                raise NotImplementedError
+                subnode = node.children[index].children[0]
+                assert isinstance(subnode, lark.tree.Tree)
+
+                if subnode.data == "dot_duration":
+                    duration = Duration(Ratio(len(subnode.children), 1), subnode)
+                elif subnode.data == "ratio_duration":
+                    ints = subnode.children[0].children
+                    assert all(
+                        isinstance(x, lark.lexer.Token) and x.type == "POSITIVE_INT"
+                        for x in ints
+                    )
+                    if len(ints) == 1:
+                        ratio = Ratio(int(ints[0]), 1, subnode.children[0])
+                    elif len(ints) == 2:
+                        ratio = Ratio(int(ints[0]), int(ints[1]), subnode.children[0])
+                    else:
+                        raise AssertionError(subnode.children[0])
+                    duration = Duration(ratio, subnode)
+                else:
+                    raise AssertionError(subnode)
+
                 index -= 1
+
             else:
-                duration = Duration(Ratio(1, 0, None), None)
+                duration = Duration(Ratio(1, 1))
 
             if node.children[index].data == "augmentation":
-                raise NotImplementedError
+                subnode = node.children[index].children[0]
+
+                if subnode.data == "upward_step" or subnode.data == "downward_step":
+                    assert all(
+                        isinstance(x, lark.lexer.Token) for x in subnode.children
+                    )
+                    if subnode.children[-1].type == "INT":
+                        amount = int(subnode.children[-1])
+                    else:
+                        amount = len(subnode.children)
+                    if subnode.children[0].type == "STEP_DOWN":
+                        amount *= -1
+                    augmentation = AugmentStep(amount, subnode)
+
+                elif (
+                    subnode.data == "upward_degree" or subnode.data == "downward_degree"
+                ):
+                    assert all(
+                        isinstance(x, lark.lexer.Token) for x in subnode.children
+                    )
+                    if subnode.children[-1].type == "INT":
+                        amount = int(subnode.children[-1])
+                    else:
+                        amount = len(subnode.children)
+                    if subnode.children[0].type == "DEGREE_DOWN":
+                        amount *= -1
+                    augmentation = AugmentDegree(amount, subnode)
+
+                else:
+                    ints = subnode.children[0].children
+                    assert all(
+                        isinstance(x, lark.lexer.Token) and x.type == "POSITIVE_INT"
+                        for x in ints
+                    )
+                    if len(ints) == 1:
+                        ratio = Ratio(int(ints[0]), 1, subnode.children[0])
+                    elif len(ints) == 2:
+                        ratio = Ratio(int(ints[0]), int(ints[1]), subnode.children[0])
+                    else:
+                        raise AssertionError(subnode.children[0])
+                    augmentation = AugmentRatio(ratio, subnode)
+
                 index -= 1
+
             else:
-                augmentation = Augmentation(0, None)
+                augmentation = AugmentStep(0)
 
             return Group(atom, absolute, octave, augmentation, duration, node)
 
@@ -171,14 +360,3 @@ def abstracttree(source: str) -> AST:
         to_ast(x) for x in parsingtree.children if not isinstance(x, lark.lexer.Token)
     ]
     return Passages(passages, comments, parsingtree, source)
-
-
-# print(abstracttree(""" # first
-#   # second
-# line1   # third
-# line2    # fourth
-#      # fifth
-# line3      # sixth
-#        # seventh
-#         # eighth
-# """))

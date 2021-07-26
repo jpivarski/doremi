@@ -5,4 +5,4 @@ from ._version import version as __version__
 import doremi.parsing
 import doremi.abstract
 
-__all__ = ("__version__", "parser")
+__all__ = ("__version__",)

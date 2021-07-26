@@ -27,23 +27,24 @@ downward_degree: DEGREE_DOWN (DEGREE_DOWN* | INT)
 ratio_tune: "*" ratio
 
 duration: dot_duration | ratio_duration
-dot_duration: DOTS
+dot_duration: DOT+
 ratio_duration: ":" ratio
 
-ratio: INT ("/" INT)?
+ratio: POSITIVE_INT ("/" POSITIVE_INT)?
 atom: WORD | "{" group+ "}"
 
+INT: /(0|[1-9][0-9]*)/
+POSITIVE_INT: /[1-9][0-9]*/
 WORD: /[A-Za-z_#][A-Za-z_#0-9]+/
 STEP_UP: "+"
 STEP_DOWN: "-"
 DEGREE_UP: ">"
 DEGREE_DOWN: "<"
 ABSOLUTE: "@"
-DOTS: /\.+/
+DOT: "."
 BLANK: /(\n|\#[^\n]*\n|\#[^\n]*)/
 
 %import common.SH_COMMENT
-%import common.INT
 %import common.CR
 %import common.LF
 %import common.WS_INLINE
@@ -51,9 +52,11 @@ BLANK: /(\n|\#[^\n]*\n|\#[^\n]*)/
 %ignore WS_INLINE
 """
 
+
 def parsingtree(source: str) -> lark.tree.Tree:
     return parsingtree.parser.parse(source)
 
+
 parsingtree.parser = lark.Lark(grammar)
 
-__all__ = ("parser")
+__all__ = "parser"
