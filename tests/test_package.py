@@ -1,4 +1,4 @@
-import bernstein as m
+import doremi as m
 
 
 def test_version():

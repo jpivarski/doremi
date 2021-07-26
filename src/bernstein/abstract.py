@@ -1,11 +1,11 @@
-# BSD 3-Clause License; see https://github.com/jpivarski/bernstein/blob/main/LICENSE
+# BSD 3-Clause License; see https://github.com/jpivarski/doremi/blob/main/LICENSE
 
 from dataclasses import dataclass
 from typing import List, Optional, Union, Generator
 
 import lark
 
-import bernstein.parsing
+import doremi.parsing
 
 
 class AST:
@@ -160,7 +160,7 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
 
 
 def abstracttree(source: str) -> AST:
-    parsingtree = bernstein.parsing.parsingtree(source)
+    parsingtree = doremi.parsing.parsingtree(source)
     assert parsingtree.data == "start"
 
     comments = list(get_comments(parsingtree))

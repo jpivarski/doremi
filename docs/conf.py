@@ -11,7 +11,7 @@ from typing import List
 
 # -- Project information -----------------------------------------------------
 
-project = "bernstein"
+project = "doremi"
 copyright = "2021, Jim Pivarski"
 author = "Jim Pivarski"
 
@@ -47,11 +47,11 @@ html_theme = "sphinx_book_theme"
 
 html_title = f"{project}"
 
-html_baseurl = "https://bernstein.readthedocs.io/en/latest/"
+html_baseurl = "https://doremi.readthedocs.io/en/latest/"
 
 html_theme_options = {
     "home_page_in_toc": True,
-    "repository_url": "https://github.com/jpivarski/bernstein",
+    "repository_url": "https://github.com/jpivarski/doremi",
     "use_repository_button": True,
     "use_issues_button": True,
     "use_edit_page_button": True,

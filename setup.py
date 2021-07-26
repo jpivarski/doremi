@@ -2,7 +2,7 @@
 # Copyright (c) 2021, Jim Pivarski
 #
 # Distributed under the 3-clause BSD license, see accompanying file LICENSE
-# or https://github.com/jpivarski/bernstein for details.
+# or https://github.com/jpivarski/doremi for details.
 
 from setuptools import setup
 
