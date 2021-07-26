@@ -22,30 +22,14 @@ class Expression(AST):
 class Word(Expression):
     val: lark.lexer.Token
 
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({str(self.val)!r})"
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return self.val == other.val
-        else:
-            return NotImplemented
-
 
 @dataclass
 class Call(Expression):
     function: Word
     args: List[Expression]
-    parsingtree: Optional[lark.tree.Tree] = field(default=None)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.function}, {self.args})"
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return self.function == other.function and self.args == other.args
-        else:
-            return NotImplemented
+    parsingtree: Optional[lark.tree.Tree] = field(
+        default=None, repr=False, compare=False, hash=False
+    )
 
 
 class Augmentation(AST):
@@ -55,61 +39,33 @@ class Augmentation(AST):
 @dataclass
 class AugmentStep(Augmentation):
     amount: int
-    parsingtree: Optional[lark.tree.Tree] = field(default=None)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.amount})"
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return self.amount == other.amount
-        else:
-            return NotImplemented
+    parsingtree: Optional[lark.tree.Tree] = field(
+        default=None, repr=False, compare=False, hash=False
+    )
 
 
 @dataclass
 class AugmentDegree(Augmentation):
     amount: int
-    parsingtree: Optional[lark.tree.Tree] = field(default=None)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.amount})"
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return self.amount == other.amount
-        else:
-            return NotImplemented
+    parsingtree: Optional[lark.tree.Tree] = field(
+        default=None, repr=False, compare=False, hash=False
+    )
 
 
 @dataclass
 class AugmentRatio(Augmentation):
     amount: Fraction
-    parsingtree: Optional[lark.tree.Tree] = field(default=None)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.amount})"
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return self.amount == other.amount
-        else:
-            return NotImplemented
+    parsingtree: Optional[lark.tree.Tree] = field(
+        default=None, repr=False, compare=False, hash=False
+    )
 
 
 @dataclass
 class Duration(AST):
     amount: Fraction
-    parsingtree: Optional[lark.tree.Tree] = field(default=None)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.amount})"
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return self.amount == other.amount
-        else:
-            return NotImplemented
+    parsingtree: Optional[lark.tree.Tree] = field(
+        default=None, repr=False, compare=False, hash=False
+    )
 
 
 @dataclass
@@ -120,86 +76,47 @@ class Modified(AST):
     augmentation: Augmentation
     duration: Duration
     repetition: int
-    parsingtree: Optional[lark.tree.Tree] = field(default=None)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.expression}, {self.absolute}, {self.octave}, {self.augmentation}, {self.duration}, {self.repetition})"
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return (
-                self.expression == other.expression
-                and self.absolute == other.absolute
-                and self.octave == other.octave
-                and self.augmentation == other.augmentation
-                and self.duration == other.duration
-                and self.repetition == other.repetition
-            )
-        else:
-            return NotImplemented
+    parsingtree: Optional[lark.tree.Tree] = field(
+        default=None, repr=False, compare=False, hash=False
+    )
 
 
 @dataclass
 class Line(AST):
     modified: List[Modified]
-    parsingtree: Optional[lark.tree.Tree] = field(default=None)
+    parsingtree: Optional[lark.tree.Tree] = field(
+        default=None, repr=False, compare=False, hash=False
+    )
 
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.modified})"
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return self.modified == other.modified
-        else:
-            return NotImplemented
 
 @dataclass
 class Assignment(AST):
     function: Word
     args: List[Word]
-    parsingtree: Optional[lark.tree.Tree] = field(default=None)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.function}, {self.args})"
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return self.function == other.function and self.args == other.args
-        else:
-            return NotImplemented
+    parsingtree: Optional[lark.tree.Tree] = field(
+        default=None, repr=False, compare=False, hash=False
+    )
 
 
 @dataclass
 class Passage(AST):
     assignment: Optional[Assignment]
     lines: List[Line]
-    parsingtree: Optional[lark.tree.Tree] = field(default=None)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.assignment}, {self.lines})"
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return self.assignment == other.assignment and self.lines == other.lines
-        else:
-            return NotImplemented
+    parsingtree: Optional[lark.tree.Tree] = field(
+        default=None, repr=False, compare=False, hash=False
+    )
 
 
 @dataclass
 class Passages(AST):
     nodes: List[Passage]
-    comments: Optional[List[lark.lexer.Token]] = field(default=None)
-    parsingtree: Optional[lark.tree.Tree] = field(default=None)
-    source: Optional[str] = field(default=None)
-
-    def __repr__(self) -> str:
-        return f"{type(self).__name__}({self.nodes})"
-
-    def __eq__(self, other: object) -> bool:
-        if isinstance(other, type(self)):
-            return self.nodes == other.nodes
-        else:
-            return NotImplemented
+    comments: Optional[List[lark.lexer.Token]] = field(
+        default=None, repr=False, compare=False, hash=False
+    )
+    parsingtree: Optional[lark.tree.Tree] = field(
+        default=None, repr=False, compare=False, hash=False
+    )
+    source: Optional[str] = field(default=None, repr=False, compare=False, hash=False)
 
 
 def get_comments(

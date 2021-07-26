@@ -84,7 +84,15 @@ def test_decorations():
         [
             Passage(
                 None,
-                [Line([Modified(Word("la"), 0, 0, AugmentRatio(Fraction(2, 1)), dur, 1)])],
+                [
+                    Line(
+                        [
+                            Modified(
+                                Word("la"), 0, 0, AugmentRatio(Fraction(2, 1)), dur, 1
+                            )
+                        ]
+                    )
+                ],
             )
         ]
     )
@@ -92,7 +100,15 @@ def test_decorations():
         [
             Passage(
                 None,
-                [Line([Modified(Word("la"), 0, 0, AugmentRatio(Fraction(2, 3)), dur, 1)])],
+                [
+                    Line(
+                        [
+                            Modified(
+                                Word("la"), 0, 0, AugmentRatio(Fraction(2, 3)), dur, 1
+                            )
+                        ]
+                    )
+                ],
             )
         ]
     )
