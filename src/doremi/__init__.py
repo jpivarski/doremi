@@ -6,4 +6,6 @@ import doremi.parsing
 import doremi.abstract
 import doremi.concrete
 
-__all__ = ("__version__",)
+from doremi.concrete import Note, Rest, RealNote, MIDINote, Voice, Fragment, Scale, get_scale, Composition, compose, make_scale, named_scale, get_scale
+
+__all__ = ("__version__", "Note", "Rest", "RealNote", "MIDINote", "Voice", "Fragment", "Scale", "get_scale", "Composition", "compose", "make_scale", "named_scale", "get_scale")

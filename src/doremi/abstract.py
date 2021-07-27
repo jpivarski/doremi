@@ -107,7 +107,7 @@ class Passage(AST):
 
 
 @dataclass
-class Composition(AST):
+class Collection(AST):
     passages: List[Passage]
     comments: Optional[List[lark.lexer.Token]] = field(
         default=None, repr=False, compare=False, hash=False
@@ -347,4 +347,4 @@ def abstracttree(source: str) -> AST:
     passages = [
         to_ast(x) for x in parsingtree.children if not isinstance(x, lark.lexer.Token)
     ]
-    return Composition(passages, comments, parsingtree, source)
+    return Collection(passages, comments, parsingtree, source)
