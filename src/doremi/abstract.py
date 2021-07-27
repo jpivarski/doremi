@@ -233,7 +233,7 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                         and subsubnode.data == "args"
                     )
                     args = [to_ast(x) for x in subsubnode.children]
-                    expression = Call(function, args)
+                    expression = Call(function, args, subnode)
 
             else:
                 expression = [to_ast(x) for x in subnode.children]

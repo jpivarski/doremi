@@ -1,13 +1,15 @@
 # BSD 3-Clause License; see https://github.com/jpivarski/doremi/blob/main/LICENSE
 
-import math
-import pkg_resources
 import csv
+import math
+import numbers
+import pkg_resources
 import re
 
 from fractions import Fraction
 from dataclasses import dataclass, field
-from typing import List, Dict, Mapping, Optional, Union
+from itertools import accumulate
+from typing import List, Set, Dict, Mapping, Optional, Union
 
 import doremi.abstract
 
@@ -66,51 +68,69 @@ class Fragment:
 class Vocabulary:
     symbols: Dict[str, Fragment]
 
+    def __getitem__(self, symbol: str) -> Fragment:
+        return self.symbols[symbol]
+
 
 @dataclass
 class Scale(Vocabulary):
-    degrees: List[Note]
+    order: List[str]
+    name: Optional[str] = field(default=None)
+    tonic: Optional[str] = field(default=None, repr=False, compare=False, hash=False)
+
+    def note(self, name: str) -> Note:
+        return self[name].voices[0].notes[0]
+
+    def __repr__(self) -> str:
+        if all(isinstance(self.note(name), MIDINote) for name in self.order):
+            empty = "." * min(len(name) for name in self.order)
+            pitches = [self.note(name).pitch for name in self.order]
+            diffs = set(x - pitches[0] for x in pitches)
+            strings = [f"{self.order[0]}({self.tonic})"]
+            j = 1
+            for i in range(1, len(solfedge)):
+                if i in diffs:
+                    strings.append(f"{self.order[j]}")
+                    j += 1
+                else:
+                    strings.append(empty)
+
+        else:
+            base = self.note(self.order[0]).frequency
+            strings = [f"{self.order[0]}({base:.3g} Hz)"]
+            for name in self.order[1:]:
+                ratio = self.note(name).frequency / base
+                as_fraction = Fraction.from_float(ratio).limit_denominator(100)
+                if 0.99 < ratio / as_fraction < 1.01:
+                    strings.append(f"{name}({str(as_fraction)})")
+                else:
+                    strings.append(f"{name}({self.note(name).frequency} Hz)")
+
+        return f"<Scale {self.name!r} {' '.join(strings)}>"
 
 
 @dataclass
-class Derived:
+class Derived(Vocabulary):
     parent: Vocabulary
 
-
-def make_notes(
-    source: Mapping[str, Union[None, float, str]], parent: Optional[Vocabulary] = None
-) -> Vocabulary:
-    symbols = {}
-    for key, value in source.items():
-        if value is None:
-            symbols[key] = Fragment([Voice([Rest(Fraction(1, 1))])])
-
-        elif isinstance(value, float):
-            if value <= 0:
-                raise ValueError("note frequencies (in Hz) must be positive")
-            symbols[key] = Fragment([Voice([RealNote(Fraction(1, 1), value)])])
-
-        elif value in notes:
-            tmp = symbols[key] = Fragment([Voice([notes[value]])])
-
+    def __getitem__(self, symbol: str) -> Fragment:
+        out = self.symbols.get(symbol)
+        if out is None:
+            return self.parent[symbol]
         else:
-            raise ValueError(f"unrecognized note specification for scale: {value!r}")
-
-    if parent is None:
-        return Vocabulary(symbols)
-    else:
-        return Derived(symbols, parent)
+            return out
 
 
-def make_scale(source: Mapping[str, Union[None, float, str]]) -> Scale:
-    symbols = make_notes(source).symbols
-    frequencies = [
-        (fragment.voices[0].notes[0].frequency, fragment.voices[0].notes[0])
-        for key, fragment in symbols.items()
-        if isinstance(fragment.voices[0].notes[0], (RealNote, MIDINote))
-    ]
-    frequencies.sort()
-    return Scale(symbols, [note for _, note in frequencies])
+@dataclass
+class Accidentals(Derived):
+    def note(self, name: str) -> Note:
+        return self[name].voices[0].notes[0]
+
+    def __repr__(self) -> str:
+        if len(self.symbols) == 0:
+            return repr(self.parent)
+        else:
+            return f"{repr(self.parent)[:-1]} (with {' '.join(self.symbols)})>"
 
 
 notes: Dict[str, MIDINote] = {}
@@ -227,6 +247,42 @@ notes["F#9"] = notes["f#9"] = notes["Gb9"] = notes["gb9"] = notes["126"]
 notes["G9"] = notes["g9"] = notes["127"]
 
 
+def make_vocabulary_from_notes(
+    source: Mapping[str, Union[None, numbers.Real, str]], parent: Optional[Vocabulary] = None
+) -> Vocabulary:
+    symbols = {}
+    for key, value in source.items():
+        if value is None:
+            symbols[key] = Fragment([Voice([Rest(Fraction(1, 1))])])
+
+        elif isinstance(value, numbers.Real):
+            if value <= 0:
+                raise ValueError("note frequencies (in Hz) must be positive")
+            symbols[key] = Fragment([Voice([RealNote(Fraction(1, 1), value)])])
+
+        elif value in notes:
+            tmp = symbols[key] = Fragment([Voice([notes[value]])])
+
+        else:
+            raise ValueError(f"unrecognized note specification for scale: {value!r}")
+
+    if parent is None:
+        return Vocabulary(symbols)
+    else:
+        return Derived(symbols, parent)
+
+
+def make_scale(source: Mapping[str, Union[None, numbers.Real, str]], name: Optional[str]) -> Scale:
+    symbols = make_vocabulary_from_notes(source).symbols
+    frequencies = [
+        (fragment.voices[0].notes[0].frequency, key)
+        for key, fragment in symbols.items()
+        if isinstance(fragment.voices[0].notes[0], (RealNote, MIDINote))
+    ]
+    frequencies.sort()
+    return Scale(symbols, [note for _, note in frequencies], name)
+
+
 # https://en.wikipedia.org/wiki/Solf%C3%A8ge#Movable_do_solf%C3%A8ge
 solfedge = [
     "do",   # 0 half-steps above do (major)
@@ -244,47 +300,72 @@ solfedge = [
 ]
 
 
-def get_scale(name: str) -> Scale:
+def named_scale(name: str, accidentals: bool = True) -> Vocabulary:
     lowered_name = name.lower()
 
-    if lowered_name not in get_scale.scales:
+    if lowered_name not in named_scale.scales:
+        included = []
+        excluded = []
 
-        m = get_scale.tonic_name.match(lowered_name)
+        m = named_scale.base_name.match(lowered_name)
         if m is not None:
             tonic, accidental, mode = m.groups()
             if tonic is None:
-                tonic = "c"
+                tonic = "C"
             if accidental is None:
                 accidental = ""
 
-            base_pitch = notes[tonic[0] + "4" + accidental].pitch
-            keys = []
-            pitches = []
+            if mode == "major" or mode == "maj":
+                mode = "ionian"
+            elif mode == "minor" or mode == "min":
+                mode = "aeolian"
 
-            # https://allthescales.org/downloads.php
-            allthescales = pkg_resources.resource_filename("doremi", "data/scale-list.csv")
-            for row in csv.reader(open(allthescales)):
-                if row[2].lower() == mode:
-                    relative = 0
-                    for step in [int(x) for x in row[3].strip()]:
-                        print(relative)
-                        pitches.append(base_pitch + relative)
-                        relative += step
+            try:
+                base_pitch = notes[tonic[0] + accidental + "4"].pitch
+            except KeyError:
+                raise ValueError(f"unrecognized note name: {tonic[0].capitalize() + accidental}")
 
-                    break
+            pitches = named_scale.data.get(mode)
+            if pitches is not None:
+                for i, x in enumerate(solfedge):
+                    if i in pitches:
+                        included.append((x, str(base_pitch + i)))
+                    else:
+                        excluded.append((x, str(base_pitch + i)))
+
             else:
                 raise ValueError(f"unrecognized mode name: {mode} (modes are single words, not hyphenated)")
 
         else:
-            raise ValueError(f"scale name pattern must be like \"C# minor\", not {name}")
+            raise ValueError(f"unrecognized scale name: {name} (must be like \"C# minor\", with a space between starting pitch, if present, and mode name)")
 
-        print(keys)
-        print(pitches)
+        symbols = make_vocabulary_from_notes(dict(included)).symbols
 
-        raise Exception
+        named_scale.scales[lowered_name] = (
+            [k for k, _ in included],
+            tonic[0].capitalize() + accidental,
+            symbols,
+            make_vocabulary_from_notes(dict(excluded)).symbols,
+        )
 
-    return get_scale.scales[lowered_name]
+    order, tonic, included_symbols, excluded_symbols = named_scale.scales[lowered_name]
+
+    out = Scale(included_symbols, order, name, tonic)
+    if accidentals:
+        out = Accidentals(excluded_symbols, out)
+    return out
 
 
-get_scale.scales: Dict[str, Scale] = {}
-get_scale.tonic_name = re.compile(r"^\s*([a-g](\#|b)?\s+)?([a-z]+)\s*$")
+named_scale.scales: Dict[str, Scale] = {}
+named_scale.base_name = re.compile(r"^\s*([a-g](\#|b)?\s+)?([a-z]+)\s*$")
+
+# https://allthescales.org/downloads.php
+allthescales = pkg_resources.resource_filename("doremi", "data/scale-list.csv")
+named_scale.data: Dict[str, Set[int]] = {}
+with open(allthescales) as file:
+    reader = csv.reader(file)
+    next(reader)  # skip header
+    for row in reader:
+        named_scale.data[row[2].lower()] = set(accumulate((
+            int(x) for x in row[3].strip()[:-1]
+        ), initial=0))
