@@ -2,6 +2,8 @@
 
 from fractions import Fraction
 
+import pytest
+
 from lark.tree import Tree
 from lark.lexer import Token
 
@@ -22,6 +24,8 @@ from doremi.abstract import (
     evaluate,
     Collection,
     abstracttree,
+    MismatchingArguments,
+    RecursiveFunction,
 )
 
 
@@ -192,8 +196,8 @@ def test_call():
     dur3 = Duration(Fraction(3, 1))
     dur32 = Duration(Fraction(3, 2))
 
-    x = Modified(Word("x"), 0, 0, None, None, 1)
-    y = Modified(Word("y"), 0, 0, None, None, 1)
+    x = Line([Modified(Word("x"), 0, 0, None, None, 1)])
+    y = Line([Modified(Word("y"), 0, 0, None, None, 1)])
 
     assert abstracttree("f") == Collection(
         [UnnamedPassage([Line([Modified(Word("f"), 0, 0, None, None, 1)])])]
@@ -619,12 +623,12 @@ do | three
 
 
 def test_evaluate():
-    assert evaluate(abstracttree("do").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree("do").passages[0], Scope({}), 0, (), ()) == (
         1.0,
         [AbstractNote(0.0, 1.0, Word("do"))],
     )
 
-    assert evaluate(abstracttree("do re mi").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree("do re mi").passages[0], Scope({}), 0, (), ()) == (
         3.0,
         [
             AbstractNote(0.0, 1.0, Word("do")),
@@ -633,12 +637,14 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree("do....").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree("do....").passages[0], Scope({}), 0, (), ()) == (
         4.0,
         [AbstractNote(0.0, 4.0, Word("do"))],
     )
 
-    assert evaluate(abstracttree("do.. re.. mi..").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(
+        abstracttree("do.. re.. mi..").passages[0], Scope({}), 0, (), ()
+    ) == (
         6.0,
         [
             AbstractNote(0.0, 2.0, Word("do")),
@@ -647,12 +653,12 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree("___").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree("___").passages[0], Scope({}), 0, (), ()) == (
         3.0,
         [],
     )
 
-    assert evaluate(abstracttree("do _ mi").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree("do _ mi").passages[0], Scope({}), 0, (), ()) == (
         3.0,
         [
             AbstractNote(0.0, 1.0, Word("do")),
@@ -660,7 +666,7 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree("do __ mi").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree("do __ mi").passages[0], Scope({}), 0, (), ()) == (
         4.0,
         [
             AbstractNote(0.0, 1.0, Word("do")),
@@ -668,7 +674,7 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree("do __ mi _").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree("do __ mi _").passages[0], Scope({}), 0, (), ()) == (
         5.0,
         [
             AbstractNote(0.0, 1.0, Word("do")),
@@ -676,7 +682,7 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree("do\nre\nmi").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree("do\nre\nmi").passages[0], Scope({}), 0, (), ()) == (
         1.0,
         [
             AbstractNote(0.0, 1.0, Word("do")),
@@ -685,7 +691,7 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree("do\n_\nre mi").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree("do\n_\nre mi").passages[0], Scope({}), 0, (), ()) == (
         2.0,
         [
             AbstractNote(0.0, 1.0, Word("do")),
@@ -694,17 +700,17 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree(">do").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree(">do").passages[0], Scope({}), 0, (), ()) == (
         1.0,
         [AbstractNote(0.0, 1.0, Word("do"), octave=1)],
     )
 
-    assert evaluate(abstracttree("do+1").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree("do+1").passages[0], Scope({}), 0, (), ()) == (
         1.0,
         [AbstractNote(0.0, 1.0, Word("do"), augmentations=(AugmentStep(1),))],
     )
 
-    assert evaluate(abstracttree("{do re mi}").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree("{do re mi}").passages[0], Scope({}), 0, (), ()) == (
         3.0,
         [
             AbstractNote(0.0, 1.0, Word("do")),
@@ -713,7 +719,7 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree(">{do re mi}").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree(">{do re mi}").passages[0], Scope({}), 0, (), ()) == (
         3.0,
         [
             AbstractNote(0.0, 1.0, Word("do"), octave=1),
@@ -722,7 +728,7 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree(">{do @re mi}").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree(">{do @re mi}").passages[0], Scope({}), 0, (), ()) == (
         3.0,
         [
             AbstractNote(0.0, 1.0, Word("do"), octave=1),
@@ -731,7 +737,7 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree("{do re mi}+1").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree("{do re mi}+1").passages[0], Scope({}), 0, (), ()) == (
         3.0,
         [
             AbstractNote(0.0, 1.0, Word("do"), augmentations=(AugmentStep(1),)),
@@ -740,7 +746,9 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree("{do @re mi}+1").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(
+        abstracttree("{do @re mi}+1").passages[0], Scope({}), 0, (), ()
+    ) == (
         3.0,
         [
             AbstractNote(0.0, 1.0, Word("do"), augmentations=(AugmentStep(1),)),
@@ -749,16 +757,22 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree("{{do @re mi}+1}>2").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(
+        abstracttree("{{do @re mi}+1}>2").passages[0], Scope({}), 0, (), ()
+    ) == (
         3.0,
         [
-            AbstractNote(0.0, 1.0, Word("do"), augmentations=(AugmentDegree(2), AugmentStep(1))),
+            AbstractNote(
+                0.0, 1.0, Word("do"), augmentations=(AugmentDegree(2), AugmentStep(1))
+            ),
             AbstractNote(1.0, 2.0, Word("re"), augmentations=(AugmentDegree(2),)),
-            AbstractNote(2.0, 3.0, Word("mi"), augmentations=(AugmentDegree(2), AugmentStep(1))),
+            AbstractNote(
+                2.0, 3.0, Word("mi"), augmentations=(AugmentDegree(2), AugmentStep(1))
+            ),
         ],
     )
 
-    assert evaluate(abstracttree("{do re mi}:6").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(abstracttree("{do re mi}:6").passages[0], Scope({}), 0, (), ()) == (
         6.0,
         [
             AbstractNote(0.0, 2.0, Word("do")),
@@ -767,7 +781,9 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree("{do re mi} fa").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(
+        abstracttree("{do re mi} fa").passages[0], Scope({}), 0, (), ()
+    ) == (
         4.0,
         [
             AbstractNote(0.0, 1.0, Word("do")),
@@ -777,7 +793,9 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree("{do re mi}:6 fa").passages[0], Scope({}), 0, ()) == (
+    assert evaluate(
+        abstracttree("{do re mi}:6 fa").passages[0], Scope({}), 0, (), ()
+    ) == (
         7.0,
         [
             AbstractNote(0.0, 2.0, Word("do")),
@@ -786,3 +804,108 @@ def test_evaluate():
             AbstractNote(6.0, 7.0, Word("fa")),
         ],
     )
+
+
+def test_evaluate_assign():
+    definition = abstracttree("f(x, y) = y x").passages[0]
+    assert evaluate(
+        abstracttree("do f(mi, re) fa so").passages[0],
+        Scope({"f": definition}),
+        0,
+        (),
+        (),
+    ) == (
+        5.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do")),
+            AbstractNote(1.0, 2.0, Word("re")),
+            AbstractNote(2.0, 3.0, Word("mi")),
+            AbstractNote(3.0, 4.0, Word("fa")),
+            AbstractNote(4.0, 5.0, Word("so")),
+        ],
+    )
+    assert evaluate(
+        abstracttree("do f(mi mi, re re) fa so").passages[0],
+        Scope({"f": definition}),
+        0,
+        (),
+        (),
+    ) == (
+        7.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do")),
+            AbstractNote(1.0, 2.0, Word("re")),
+            AbstractNote(2.0, 3.0, Word("re")),
+            AbstractNote(3.0, 4.0, Word("mi")),
+            AbstractNote(4.0, 5.0, Word("mi")),
+            AbstractNote(5.0, 6.0, Word("fa")),
+            AbstractNote(6.0, 7.0, Word("so")),
+        ],
+    )
+
+    with pytest.raises(MismatchingArguments):
+        evaluate(abstracttree("f(mi)").passages[0], Scope({"f": definition}), 0, (), ())
+
+    with pytest.raises(MismatchingArguments):
+        evaluate(
+            abstracttree("f(la, la, la)").passages[0],
+            Scope({"f": definition}),
+            0,
+            (),
+            (),
+        )
+
+    definition = abstracttree("f = do\nmi\nso").passages[0]
+    assert evaluate(
+        abstracttree("la f la").passages[0], Scope({"f": definition}), 0, (), ()
+    ) == (
+        3.0,
+        [
+            AbstractNote(0.0, 1.0, Word("la")),
+            AbstractNote(1.0, 2.0, Word("do")),
+            AbstractNote(1.0, 2.0, Word("mi")),
+            AbstractNote(1.0, 2.0, Word("so")),
+            AbstractNote(2.0, 3.0, Word("la")),
+        ],
+    )
+
+    with pytest.raises(MismatchingArguments):
+        evaluate(abstracttree("f(mi)").passages[0], Scope({"f": definition}), 0, (), ())
+
+    definition1 = abstracttree("f = do do").passages[0]
+    definition2 = abstracttree("g(x) = f x").passages[0]
+    assert evaluate(
+        abstracttree("g(mi)").passages[0],
+        Scope({"f": definition1, "g": definition2}),
+        0,
+        (),
+        (),
+    ) == (
+        3.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do")),
+            AbstractNote(1.0, 2.0, Word("do")),
+            AbstractNote(2.0, 3.0, Word("mi")),
+        ],
+    )
+
+    definition1 = abstracttree("f = g(la)").passages[0]
+    definition2 = abstracttree("g(x) = f x").passages[0]
+    with pytest.raises(RecursiveFunction):
+        evaluate(
+            abstracttree("g(mi)").passages[0],
+            Scope({"f": definition1, "g": definition2}),
+            0,
+            (),
+            (),
+        )
+
+    definition2 = abstracttree("g = do g mi").passages[0]
+    with pytest.raises(RecursiveFunction):
+        evaluate(
+            abstracttree("la g").passages[0],
+            Scope({"g": definition2}),
+            0,
+            (),
+            (),
+        )

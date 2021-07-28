@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from itertools import accumulate
 from typing import List, Set, Tuple, Dict, Mapping, Optional, Union
 
+import lark
+
 import doremi.abstract
 
 
@@ -62,10 +64,12 @@ class Scale:
     name: Optional[str] = field(default=None, repr=False, compare=False, hash=False)
     tonic: Optional[str] = field(default=None, repr=False, compare=False, hash=False)
 
-    def __getitem__(self, symbol: str) -> Note:
+    def __getitem__(self, symbol: lark.lexer.Token) -> Note:
         out = self.notes.get(symbol)
         if out is None:
-            raise KeyError(f"undefined symbol: {symbol!r}")
+            out = self.accidentals.get(symbol)
+        if out is None:
+            raise doremi.abstract.UndefinedSymbol(symbol)
         else:
             return out
 

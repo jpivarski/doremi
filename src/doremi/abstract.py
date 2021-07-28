@@ -41,13 +41,31 @@ class AbstractNote:
 
 @dataclass
 class Scope:
-    symbols: Dict[str, "UnnamedPassage"]
+    symbols: Dict[lark.lexer.Token, "NamedPassage"]
 
-    def has(self, symbol: str) -> bool:
+    def has(self, symbol: lark.lexer.Token) -> bool:
         return symbol in self.symbols
 
-    def get(self, symbol: str) -> Optional["UnnamedPassage"]:
+    def get(self, symbol: lark.lexer.Token) -> Optional["NamedPassage"]:
         return self.symbols.get(symbol)
+
+
+@dataclass
+class SubScope(Scope):
+    parent: Scope
+
+    def has(self, symbol: lark.lexer.Token) -> bool:
+        if symbol in self.symbols:
+            return True
+        else:
+            return self.parent.has(symbol)
+
+    def get(self, symbol: lark.lexer.Token) -> Optional["NamedPassage"]:
+        out = self.symbols.get(symbol)
+        if out is not None:
+            return out
+        else:
+            return self.parent.get(symbol)
 
 
 class AST:
@@ -160,10 +178,11 @@ class UnnamedPassage(Passage):
 
 
 def evaluate(
-    node: Union[list, Word, Call, Modified, Line, UnnamedPassage],
+    node: Union[list, Word, Call, Modified, Line, Passage],
     scope: Scope,
     octave: int,
     augmentations: Tuple[Augmentation],
+    breadcrumbs: Tuple[str],
 ) -> Tuple[float, List[AbstractNote]]:
 
     if isinstance(node, list):
@@ -171,10 +190,7 @@ def evaluate(
         all_notes = []
         for subnode in node:
             duration, notes = evaluate(
-                subnode,
-                scope,
-                octave,
-                augmentations,
+                subnode, scope, octave, augmentations, breadcrumbs
             )
             for note in notes:
                 note.inplace_shift(last_stop)
@@ -186,12 +202,7 @@ def evaluate(
 
     elif isinstance(node, Word):
         if scope.has(node.val):
-            return evaluate(
-                Call(node.val, []),
-                scope,
-                octave,
-                augmentations,
-            )
+            return evaluate(Call(node, []), scope, octave, augmentations, breadcrumbs)
         elif is_rest(node.val):
             return float(len(node.val)), []
         else:
@@ -205,7 +216,27 @@ def evaluate(
             return 1.0, [note]
 
     elif isinstance(node, Call):
-        raise NotImplementedError
+        if node.function.val in breadcrumbs:
+            raise RecursiveFunction(node.function.val)
+
+        namedpassage = scope.get(node.function.val)
+        if namedpassage is None:
+            raise UndefinedSymbol(node.function.val)
+
+        parameters = namedpassage.assignment.args
+        arguments = node.args
+        if len(parameters) != len(arguments):
+            raise MismatchingArguments(node.function.val)
+
+        subscope = SubScope(
+            {
+                param.val: NamedPassage(Assignment(param, []), [arg])
+                for param, arg in zip(parameters, arguments)
+            },
+            scope,
+        )
+        breadcrumbs = breadcrumbs + (node.function.val,)
+        return evaluate(namedpassage, subscope, octave, augmentations, breadcrumbs)
 
     elif isinstance(node, Modified):
         if node.absolute > 0:
@@ -215,18 +246,12 @@ def evaluate(
 
         if isinstance(node.expression, Expression):
             natural_duration, notes = evaluate(
-                node.expression,
-                scope,
-                octave + node.octave,
-                augmentations,
+                node.expression, scope, octave + node.octave, augmentations, breadcrumbs
             )
 
         else:
             natural_duration, notes = evaluate(
-                node.expression,
-                scope,
-                octave + node.octave,
-                augmentations,
+                node.expression, scope, octave + node.octave, augmentations, breadcrumbs
             )
 
         if node.duration is not None:
@@ -251,23 +276,13 @@ def evaluate(
         return duration, notes
 
     elif isinstance(node, Line):
-        return evaluate(
-            node.modified,
-            scope,
-            octave,
-            augmentations,
-        )
+        return evaluate(node.modified, scope, octave, augmentations, breadcrumbs)
 
-    elif isinstance(node, UnnamedPassage):
+    elif isinstance(node, Passage):
         max_duration = 0.0
         all_notes = []
         for line in node.lines:
-            duration, notes = evaluate(
-                line,
-                scope,
-                octave,
-                augmentations,
-            )
+            duration, notes = evaluate(line, scope, octave, augmentations, breadcrumbs)
 
             all_notes.extend(notes)
             if max_duration < duration:
@@ -276,7 +291,7 @@ def evaluate(
         return max_duration, all_notes
 
     else:
-        raise AssertionError
+        raise AssertionError(repr(node))
 
 
 @dataclass
@@ -528,3 +543,43 @@ def abstracttree(source: str) -> AST:
         to_ast(x) for x in parsingtree.children if not isinstance(x, lark.lexer.Token)
     ]
     return Collection(passages, comments, parsingtree, source)
+
+
+class DoremiError(Exception):
+    error_message: str
+    node: Union[lark.lexer.Token, lark.tree.Tree]
+    context: Optional[str]
+
+    def __str__(self) -> str:
+        out = f"{self.error_message} (on line {self.node.line})"
+
+        if self.context is None:
+            return out
+        else:
+            line = self.context.splitlines()[self.node.line - 1]
+
+            return f"""{out}
+
+    {line}
+    {"-" * (self.node.column - 1) + "^"}"""
+
+
+class RecursiveFunction(DoremiError):
+    def __init__(self, node: lark.tree.Tree):
+        self.error_message = f"function (indirectly?) calls itself: {str(node)!r}"
+        self.node = node
+        self.context = None
+
+
+class UndefinedSymbol(DoremiError):
+    def __init__(self, node: lark.lexer.Token):
+        self.error_message = f"symbol has not been defined (yet?): {str(node)!r}"
+        self.node = node
+        self.context = None
+
+
+class MismatchingArguments(DoremiError):
+    def __init__(self, node: lark.tree.Tree):
+        self.error_message = "wrong number of arguments"
+        self.node = node
+        self.context = None

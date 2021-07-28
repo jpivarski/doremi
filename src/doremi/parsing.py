@@ -35,11 +35,11 @@ repetition: "~" POSITIVE_INT
 
 ratio: POSITIVE_INT ("/" POSITIVE_INT)?
 expression: WORD | WORD "(" args? ")" | "{" modified+ "}"
-args: modified ("," modified)*
+args: line ("," line)*
 
 INT: /(0|[1-9][0-9]*)/
 POSITIVE_INT: /[1-9][0-9]*/
-WORD: /[A-Za-z_][A-Za-z_#0-9]*/
+WORD: /[\p{L}_][\p{L}_#0-9]*/
 STEP_UP: "+"
 STEP_DOWN: "-"
 DEGREE_UP: ">"
@@ -58,6 +58,6 @@ def parsingtree(source: str) -> lark.tree.Tree:
     return parsingtree.parser.parse(source)
 
 
-parsingtree.parser = lark.Lark(grammar)
+parsingtree.parser = lark.Lark(grammar, regex=True)
 
 __all__ = "parser"
