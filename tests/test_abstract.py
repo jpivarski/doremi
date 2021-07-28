@@ -703,3 +703,86 @@ def test_evaluate():
         1.0,
         [AbstractNote(0.0, 1.0, Word("do"), augmentations=(AugmentStep(1),))],
     )
+
+    assert evaluate(abstracttree("{do re mi}").passages[0], Scope({}), 0, ()) == (
+        3.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do")),
+            AbstractNote(1.0, 2.0, Word("re")),
+            AbstractNote(2.0, 3.0, Word("mi")),
+        ],
+    )
+
+    assert evaluate(abstracttree(">{do re mi}").passages[0], Scope({}), 0, ()) == (
+        3.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do"), octave=1),
+            AbstractNote(1.0, 2.0, Word("re"), octave=1),
+            AbstractNote(2.0, 3.0, Word("mi"), octave=1),
+        ],
+    )
+
+    assert evaluate(abstracttree(">{do @re mi}").passages[0], Scope({}), 0, ()) == (
+        3.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do"), octave=1),
+            AbstractNote(1.0, 2.0, Word("re"), octave=1),
+            AbstractNote(2.0, 3.0, Word("mi"), octave=1),
+        ],
+    )
+
+    assert evaluate(abstracttree("{do re mi}+1").passages[0], Scope({}), 0, ()) == (
+        3.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do"), augmentations=(AugmentStep(1),)),
+            AbstractNote(1.0, 2.0, Word("re"), augmentations=(AugmentStep(1),)),
+            AbstractNote(2.0, 3.0, Word("mi"), augmentations=(AugmentStep(1),)),
+        ],
+    )
+
+    assert evaluate(abstracttree("{do @re mi}+1").passages[0], Scope({}), 0, ()) == (
+        3.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do"), augmentations=(AugmentStep(1),)),
+            AbstractNote(1.0, 2.0, Word("re")),
+            AbstractNote(2.0, 3.0, Word("mi"), augmentations=(AugmentStep(1),)),
+        ],
+    )
+
+    assert evaluate(abstracttree("{{do @re mi}+1}>2").passages[0], Scope({}), 0, ()) == (
+        3.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do"), augmentations=(AugmentDegree(2), AugmentStep(1))),
+            AbstractNote(1.0, 2.0, Word("re"), augmentations=(AugmentDegree(2),)),
+            AbstractNote(2.0, 3.0, Word("mi"), augmentations=(AugmentDegree(2), AugmentStep(1))),
+        ],
+    )
+
+    assert evaluate(abstracttree("{do re mi}:6").passages[0], Scope({}), 0, ()) == (
+        6.0,
+        [
+            AbstractNote(0.0, 2.0, Word("do")),
+            AbstractNote(2.0, 4.0, Word("re")),
+            AbstractNote(4.0, 6.0, Word("mi")),
+        ],
+    )
+
+    assert evaluate(abstracttree("{do re mi} fa").passages[0], Scope({}), 0, ()) == (
+        4.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do")),
+            AbstractNote(1.0, 2.0, Word("re")),
+            AbstractNote(2.0, 3.0, Word("mi")),
+            AbstractNote(3.0, 4.0, Word("fa")),
+        ],
+    )
+
+    assert evaluate(abstracttree("{do re mi}:6 fa").passages[0], Scope({}), 0, ()) == (
+        7.0,
+        [
+            AbstractNote(0.0, 2.0, Word("do")),
+            AbstractNote(2.0, 4.0, Word("re")),
+            AbstractNote(4.0, 6.0, Word("mi")),
+            AbstractNote(6.0, 7.0, Word("fa")),
+        ],
+    )

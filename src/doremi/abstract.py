@@ -160,13 +160,31 @@ class UnnamedPassage(Passage):
 
 
 def evaluate(
-    node: Union[Word, Call, Modified, Line, UnnamedPassage],
+    node: Union[list, Word, Call, Modified, Line, UnnamedPassage],
     scope: Scope,
     octave: int,
     augmentations: Tuple[Augmentation],
 ) -> Tuple[float, List[AbstractNote]]:
 
-    if isinstance(node, Word):
+    if isinstance(node, list):
+        last_stop = 0.0
+        all_notes = []
+        for subnode in node:
+            duration, notes = evaluate(
+                subnode,
+                scope,
+                octave,
+                augmentations,
+            )
+            for note in notes:
+                note.inplace_shift(last_stop)
+
+            all_notes.extend(notes)
+            last_stop += duration
+
+        return last_stop, all_notes
+
+    elif isinstance(node, Word):
         if scope.has(node.val):
             return evaluate(
                 Call(node.val, []),
@@ -204,7 +222,12 @@ def evaluate(
             )
 
         else:
-            raise NotImplementedError
+            natural_duration, notes = evaluate(
+                node.expression,
+                scope,
+                octave + node.octave,
+                augmentations,
+            )
 
         if node.duration is not None:
             factor = float(node.duration.amount) / natural_duration
@@ -228,22 +251,12 @@ def evaluate(
         return duration, notes
 
     elif isinstance(node, Line):
-        last_stop = 0.0
-        all_notes = []
-        for modified in node.modified:
-            duration, notes = evaluate(
-                modified,
-                scope,
-                octave,
-                augmentations,
-            )
-            for note in notes:
-                note.inplace_shift(last_stop)
-
-            all_notes.extend(notes)
-            last_stop += duration
-
-        return last_stop, all_notes
+        return evaluate(
+            node.modified,
+            scope,
+            octave,
+            augmentations,
+        )
 
     elif isinstance(node, UnnamedPassage):
         max_duration = 0.0
