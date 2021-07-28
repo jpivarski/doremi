@@ -805,6 +805,33 @@ def test_evaluate():
         ],
     )
 
+    assert evaluate(abstracttree("do ~ 2").passages[0], Scope({}), 0, (), ()) == (
+        2.0,
+        [AbstractNote(0.0, 1.0, Word("do")), AbstractNote(1.0, 2.0, Word("do"))],
+    )
+
+    assert evaluate(abstracttree("do re mi ~ 2").passages[0], Scope({}), 0, (), ()) == (
+        4.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do")),
+            AbstractNote(1.0, 2.0, Word("re")),
+            AbstractNote(2.0, 3.0, Word("mi")),
+            AbstractNote(3.0, 4.0, Word("mi")),
+        ],
+    )
+
+    assert evaluate(abstracttree("{do re mi} ~ 2").passages[0], Scope({}), 0, (), ()) == (
+        6.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do")),
+            AbstractNote(1.0, 2.0, Word("re")),
+            AbstractNote(2.0, 3.0, Word("mi")),
+            AbstractNote(3.0, 4.0, Word("do")),
+            AbstractNote(4.0, 5.0, Word("re")),
+            AbstractNote(5.0, 6.0, Word("mi")),
+        ],
+    )
+
 
 def test_evaluate_assign():
     definition = abstracttree("f(x, y) = y x").passages[0]
@@ -909,3 +936,38 @@ def test_evaluate_assign():
             (),
             (),
         )
+
+
+def test_evaluate_midlevel():
+    assert abstracttree(
+        """
+f(x, y) = y x
+
+do f(mi mi, re re) fa
+"""
+    ).evaluate(None) == (
+        6.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do")),
+            AbstractNote(1.0, 2.0, Word("re")),
+            AbstractNote(2.0, 3.0, Word("re")),
+            AbstractNote(3.0, 4.0, Word("mi")),
+            AbstractNote(4.0, 5.0, Word("mi")),
+            AbstractNote(5.0, 6.0, Word("fa")),
+        ],
+        Scope(
+            {
+                "f": NamedPassage(
+                    Assignment(Word("f"), [Word("x"), Word("y")]),
+                    [
+                        Line(
+                            [
+                                Modified(Word(val="y"), 0, 0, None, None, 1),
+                                Modified(Word("x"), 0, 0, None, None, 1),
+                            ]
+                        )
+                    ],
+                )
+            }
+        ),
+    )

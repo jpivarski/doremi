@@ -53,8 +53,8 @@ class MIDINote(Note):
 @dataclass
 class TimedNote:
     note: Note
-    start: float
-    stop: float
+    start: float   # real time in seconds
+    stop: float   # real time in seconds
 
 
 @dataclass
@@ -64,12 +64,15 @@ class Scale:
     name: Optional[str] = field(default=None, repr=False, compare=False, hash=False)
     tonic: Optional[str] = field(default=None, repr=False, compare=False, hash=False)
 
-    def __getitem__(self, symbol: lark.lexer.Token) -> Note:
+    def __getitem__(self, symbol: str) -> Note:
         out = self.notes.get(symbol)
         if out is None:
             out = self.accidentals.get(symbol)
         if out is None:
-            raise doremi.abstract.UndefinedSymbol(symbol)
+            if isinstance(symbol, lark.lexer.Token):
+                raise doremi.abstract.UndefinedSymbol(symbol)
+            else:
+                raise KeyError(f"symbol not found in scale: {symbol!r}")
         else:
             return out
 
@@ -120,20 +123,47 @@ AnyScale = Union[Scale, str, MakeScale]
 @dataclass
 class Composition:
     scale: Scale
-    # vocabulary: doremi.abstract.Vocabulary
+    bpm: float
+    num_beats: float
+    scope: doremi.abstract.Scope
+    abstract_collection: doremi.abstract.Collection
+    abstract_notes: List[doremi.abstract.AbstractNote]
 
+    def __repr__(self):
+        scale = ""
+        if self.scale.name is not None:
+            scale = f" in {self.scale.name!r}"
+        return f"<Composition{scale} {self.bpm} bpm ({len(self.abstract_notes)} notes)>"
 
-def compose(
-    source: str,
-    scale: AnyScale = "C major",
-    # vocabulary: Optional[doremi.abstract.Vocabulary] = None,
-) -> Composition:
+    @property
+    def beat_in_seconds(self) -> float:
+        return 60.0 / self.bpm
 
-    scale = get_scale(scale)
-    collection = doremi.abstract.abstracttree(source)
-    passages, vocabulary = collection.evaluate(vocabulary)
+    @property
+    def duration_in_seconds(self) -> float:
+        return self.num_beats * self.beat_in_seconds
 
-    raise NotImplementedError
+    @property
+    def notes(self) -> List[TimedNote]:
+        beat_in_seconds = self.beat_in_seconds
+
+        notes = []
+        for abstract_note in self.abstract_notes:
+            note = self.scale[abstract_note.word.val]
+
+            if abstract_note.octave != 0:
+                note = note.with_octave(abstract_note.octave)
+
+            if len(abstract_note.augmentations) != 0:
+                note = note.with_augmentations(abstract_note.augmentations)
+
+            notes.append(TimedNote(
+                note,
+                abstract_note.start * beat_in_seconds,
+                abstract_note.stop * beat_in_seconds,
+            ))
+
+        return notes
 
 
 notes: Dict[str, MIDINote] = {}

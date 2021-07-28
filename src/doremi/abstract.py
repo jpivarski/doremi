@@ -27,7 +27,7 @@ class AbstractNote:
             self.stop,
             self.word,
             self.octave,
-            self.augmentation,
+            self.augmentations,
         )
 
     def inplace_shift(self, shift: float) -> None:
@@ -48,6 +48,9 @@ class Scope:
 
     def get(self, symbol: lark.lexer.Token) -> Optional["NamedPassage"]:
         return self.symbols.get(symbol)
+
+    def add(self, passage: "NamedPassage"):
+        self.symbols[passage.assignment.function.val] = passage
 
 
 @dataclass
@@ -269,6 +272,7 @@ def evaluate(
                 new_notes = [x.copy() for x in notes]
                 for note in new_notes:
                     note.inplace_shift(i * natural_duration)
+                all_notes.extend(new_notes)
 
             duration = node.repetition * natural_duration
             notes = all_notes
@@ -304,6 +308,19 @@ class Collection(AST):
         default=None, repr=False, compare=False, hash=False
     )
     source: Optional[str] = field(default=None, repr=False, compare=False, hash=False)
+
+    def evaluate(self, scope: Optional[Scope]) -> Tuple[float, List[AbstractNote], Scope]:
+        if scope is None:
+            scope = Scope({})
+        unnamed_passages: List[UnnamedPassage] = []
+        for passage in self.passages:
+            if isinstance(passage, NamedPassage):
+                scope.add(passage)
+            else:
+                unnamed_passages.append(passage)
+
+        duration, notes = evaluate(unnamed_passages, scope, 0, (), ())
+        return duration, notes, scope
 
 
 def get_comments(
