@@ -6,6 +6,8 @@ from lark.tree import Tree
 from lark.lexer import Token
 
 from doremi.abstract import (
+    AbstractNote,
+    Scope,
     Word,
     Call,
     AugmentStep,
@@ -15,80 +17,98 @@ from doremi.abstract import (
     Modified,
     Line,
     Assignment,
-    Passage,
+    NamedPassage,
+    UnnamedPassage,
+    evaluate,
     Collection,
     abstracttree,
 )
 
 
 def test_decorations():
-    aug = AugmentStep(0)
-    dur = Duration(Fraction(1, 1))
-
     assert abstracttree("la") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, 0, aug, dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Word("la"), 0, 0, None, None, 1)])])]
     )
     assert abstracttree("@la") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 1, 0, aug, dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Word("la"), 1, 0, None, None, 1)])])]
     )
     assert abstracttree("@ @ la") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 2, 0, aug, dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Word("la"), 2, 0, None, None, 1)])])]
     )
 
     assert abstracttree(">la") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, 1, aug, dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Word("la"), 0, 1, None, None, 1)])])]
     )
     assert abstracttree("<<la") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, -2, aug, dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Word("la"), 0, -2, None, None, 1)])])]
     )
     assert abstracttree("3>la") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, 3, aug, dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Word("la"), 0, 3, None, None, 1)])])]
     )
     assert abstracttree("3< la") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, -3, aug, dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Word("la"), 0, -3, None, None, 1)])])]
     )
 
     assert abstracttree("la+") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, 0, AugmentStep(1), dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Word("la"), 0, 0, AugmentStep(1), None, 1)])])]
     )
     assert abstracttree("la + +") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, 0, AugmentStep(2), dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Word("la"), 0, 0, AugmentStep(2), None, 1)])])]
     )
     assert abstracttree("la+2") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, 0, AugmentStep(2), dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Word("la"), 0, 0, AugmentStep(2), None, 1)])])]
     )
     assert abstracttree("la-2") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, 0, AugmentStep(-2), dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Word("la"), 0, 0, AugmentStep(-2), None, 1)])])]
     )
     assert abstracttree("la- 3") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, 0, AugmentStep(-3), dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Word("la"), 0, 0, AugmentStep(-3), None, 1)])])]
     )
 
     assert abstracttree("la>") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, 0, AugmentDegree(1), dur, 1)])])]
+        [
+            UnnamedPassage(
+                [Line([Modified(Word("la"), 0, 0, AugmentDegree(1), None, 1)])]
+            )
+        ]
     )
     assert abstracttree("la > >") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, 0, AugmentDegree(2), dur, 1)])])]
+        [
+            UnnamedPassage(
+                [Line([Modified(Word("la"), 0, 0, AugmentDegree(2), None, 1)])]
+            )
+        ]
     )
     assert abstracttree("la>2") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, 0, AugmentDegree(2), dur, 1)])])]
+        [
+            UnnamedPassage(
+                [Line([Modified(Word("la"), 0, 0, AugmentDegree(2), None, 1)])]
+            )
+        ]
     )
     assert abstracttree("la<2") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, 0, AugmentDegree(-2), dur, 1)])])]
+        [
+            UnnamedPassage(
+                [Line([Modified(Word("la"), 0, 0, AugmentDegree(-2), None, 1)])]
+            )
+        ]
     )
     assert abstracttree("la< 3") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, 0, AugmentDegree(-3), dur, 1)])])]
+        [
+            UnnamedPassage(
+                [Line([Modified(Word("la"), 0, 0, AugmentDegree(-3), None, 1)])]
+            )
+        ]
     )
 
     assert abstracttree("la*2") == Collection(
         [
-            Passage(
-                None,
+            UnnamedPassage(
                 [
                     Line(
                         [
                             Modified(
-                                Word("la"), 0, 0, AugmentRatio(Fraction(2, 1)), dur, 1
+                                Word("la"), 0, 0, AugmentRatio(Fraction(2, 1)), None, 1
                             )
                         ]
                     )
@@ -98,13 +118,12 @@ def test_decorations():
     )
     assert abstracttree("la*2/3") == Collection(
         [
-            Passage(
-                None,
+            UnnamedPassage(
                 [
                     Line(
                         [
                             Modified(
-                                Word("la"), 0, 0, AugmentRatio(Fraction(2, 3)), dur, 1
+                                Word("la"), 0, 0, AugmentRatio(Fraction(2, 3)), None, 1
                             )
                         ]
                     )
@@ -115,45 +134,40 @@ def test_decorations():
 
     assert abstracttree("la...") == Collection(
         [
-            Passage(
-                None,
-                [Line([Modified(Word("la"), 0, 0, aug, Duration(Fraction(3, 1)), 1)])],
+            UnnamedPassage(
+                [Line([Modified(Word("la"), 0, 0, None, Duration(Fraction(3, 1)), 1)])],
             )
         ]
     )
     assert abstracttree("la:3") == Collection(
         [
-            Passage(
-                None,
-                [Line([Modified(Word("la"), 0, 0, aug, Duration(Fraction(3, 1)), 1)])],
+            UnnamedPassage(
+                [Line([Modified(Word("la"), 0, 0, None, Duration(Fraction(3, 1)), 1)])],
             )
         ]
     )
     assert abstracttree("la:3/2") == Collection(
         [
-            Passage(
-                None,
-                [Line([Modified(Word("la"), 0, 0, aug, Duration(Fraction(3, 2)), 1)])],
+            UnnamedPassage(
+                [Line([Modified(Word("la"), 0, 0, None, Duration(Fraction(3, 2)), 1)])],
             )
         ]
     )
     assert abstracttree("la:3 / 2") == Collection(
         [
-            Passage(
-                None,
-                [Line([Modified(Word("la"), 0, 0, aug, Duration(Fraction(3, 2)), 1)])],
+            UnnamedPassage(
+                [Line([Modified(Word("la"), 0, 0, None, Duration(Fraction(3, 2)), 1)])],
             )
         ]
     )
 
     assert abstracttree("la ~ 4") == Collection(
-        [Passage(None, [Line([Modified(Word("la"), 0, 0, aug, dur, 4)])])]
+        [UnnamedPassage([Line([Modified(Word("la"), 0, 0, None, None, 4)])])]
     )
 
     assert abstracttree("@ > la+... ~ 4") == Collection(
         [
-            Passage(
-                None,
+            UnnamedPassage(
                 [
                     Line(
                         [
@@ -174,178 +188,198 @@ def test_decorations():
 
 
 def test_call():
-    aug = AugmentStep(0)
     aug1 = AugmentStep(1)
-    dur = Duration(Fraction(1, 1))
     dur3 = Duration(Fraction(3, 1))
     dur32 = Duration(Fraction(3, 2))
 
-    x = Modified(Word("x"), 0, 0, aug, dur, 1)
-    y = Modified(Word("y"), 0, 0, aug, dur, 1)
+    x = Modified(Word("x"), 0, 0, None, None, 1)
+    y = Modified(Word("y"), 0, 0, None, None, 1)
 
     assert abstracttree("f") == Collection(
-        [Passage(None, [Line([Modified(Word("f"), 0, 0, aug, dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Word("f"), 0, 0, None, None, 1)])])]
     )
     assert abstracttree("f()") == Collection(
-        [Passage(None, [Line([Modified(Word("f"), 0, 0, aug, dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Word("f"), 0, 0, None, None, 1)])])]
     )
     assert abstracttree("f(x)") == Collection(
-        [Passage(None, [Line([Modified(Call(Word("f"), [x]), 0, 0, aug, dur, 1)])])]
+        [UnnamedPassage([Line([Modified(Call(Word("f"), [x]), 0, 0, None, None, 1)])])]
     )
     assert abstracttree("f(x, y)") == Collection(
-        [Passage(None, [Line([Modified(Call(Word("f"), [x, y]), 0, 0, aug, dur, 1)])])]
+        [
+            UnnamedPassage(
+                [Line([Modified(Call(Word("f"), [x, y]), 0, 0, None, None, 1)])]
+            )
+        ]
     )
 
     assert abstracttree("@f(x, y)") == Collection(
-        [Passage(None, [Line([Modified(Call(Word("f"), [x, y]), 1, 0, aug, dur, 1)])])]
+        [
+            UnnamedPassage(
+                [Line([Modified(Call(Word("f"), [x, y]), 1, 0, None, None, 1)])]
+            )
+        ]
     )
     assert abstracttree(">f(x, y)") == Collection(
-        [Passage(None, [Line([Modified(Call(Word("f"), [x, y]), 0, 1, aug, dur, 1)])])]
+        [
+            UnnamedPassage(
+                [Line([Modified(Call(Word("f"), [x, y]), 0, 1, None, None, 1)])]
+            )
+        ]
     )
     assert abstracttree("f(x, y)+") == Collection(
-        [Passage(None, [Line([Modified(Call(Word("f"), [x, y]), 0, 0, aug1, dur, 1)])])]
+        [
+            UnnamedPassage(
+                [Line([Modified(Call(Word("f"), [x, y]), 0, 0, aug1, None, 1)])]
+            )
+        ]
     )
     assert abstracttree("f(x, y)...") == Collection(
-        [Passage(None, [Line([Modified(Call(Word("f"), [x, y]), 0, 0, aug, dur3, 1)])])]
+        [
+            UnnamedPassage(
+                [Line([Modified(Call(Word("f"), [x, y]), 0, 0, None, dur3, 1)])]
+            )
+        ]
     )
     assert abstracttree("f(x, y):3/2") == Collection(
         [
-            Passage(
-                None, [Line([Modified(Call(Word("f"), [x, y]), 0, 0, aug, dur32, 1)])]
+            UnnamedPassage(
+                [Line([Modified(Call(Word("f"), [x, y]), 0, 0, None, dur32, 1)])]
             )
         ]
     )
     assert abstracttree("f(x, y) ~ 4") == Collection(
-        [Passage(None, [Line([Modified(Call(Word("f"), [x, y]), 0, 0, aug, dur, 4)])])]
+        [
+            UnnamedPassage(
+                [Line([Modified(Call(Word("f"), [x, y]), 0, 0, None, None, 4)])]
+            )
+        ]
     )
 
     assert abstracttree("@>f(x, y)+:3/2 ~ 4") == Collection(
         [
-            Passage(
-                None, [Line([Modified(Call(Word("f"), [x, y]), 1, 1, aug1, dur32, 4)])]
+            UnnamedPassage(
+                [Line([Modified(Call(Word("f"), [x, y]), 1, 1, aug1, dur32, 4)])]
             )
         ]
     )
 
 
 def test_modified():
-    aug = AugmentStep(0)
     aug1 = AugmentStep(1)
-    dur = Duration(Fraction(1, 1))
     dur3 = Duration(Fraction(3, 1))
     dur32 = Duration(Fraction(3, 2))
 
-    la = Modified(Word("la"), 0, 0, aug, dur, 1)
+    la = Modified(Word("la"), 0, 0, None, None, 1)
 
     assert abstracttree("{la la la}") == Collection(
-        [Passage(None, [Line([Modified([la, la, la], 0, 0, aug, dur, 1)])])]
+        [UnnamedPassage([Line([Modified([la, la, la], 0, 0, None, None, 1)])])]
     )
     assert abstracttree("@{la la la}") == Collection(
-        [Passage(None, [Line([Modified([la, la, la], 1, 0, aug, dur, 1)])])]
+        [UnnamedPassage([Line([Modified([la, la, la], 1, 0, None, None, 1)])])]
     )
     assert abstracttree(">{la la la}") == Collection(
-        [Passage(None, [Line([Modified([la, la, la], 0, 1, aug, dur, 1)])])]
+        [UnnamedPassage([Line([Modified([la, la, la], 0, 1, None, None, 1)])])]
     )
     assert abstracttree("{la la la}+") == Collection(
-        [Passage(None, [Line([Modified([la, la, la], 0, 0, aug1, dur, 1)])])]
+        [UnnamedPassage([Line([Modified([la, la, la], 0, 0, aug1, None, 1)])])]
     )
     assert abstracttree("{la la la}...") == Collection(
-        [Passage(None, [Line([Modified([la, la, la], 0, 0, aug, dur3, 1)])])]
+        [UnnamedPassage([Line([Modified([la, la, la], 0, 0, None, dur3, 1)])])]
     )
     assert abstracttree("{la la la}:3/2") == Collection(
-        [Passage(None, [Line([Modified([la, la, la], 0, 0, aug, dur32, 1)])])]
+        [UnnamedPassage([Line([Modified([la, la, la], 0, 0, None, dur32, 1)])])]
     )
     assert abstracttree("{la la la} ~ 4") == Collection(
-        [Passage(None, [Line([Modified([la, la, la], 0, 0, aug, dur, 4)])])]
+        [UnnamedPassage([Line([Modified([la, la, la], 0, 0, None, None, 4)])])]
     )
 
     assert abstracttree("@>{la la la}+:3/2 ~ 4") == Collection(
-        [Passage(None, [Line([Modified([la, la, la], 1, 1, aug1, dur32, 4)])])]
+        [UnnamedPassage([Line([Modified([la, la, la], 1, 1, aug1, dur32, 4)])])]
     )
 
 
 def test_passage():
-    do = Modified(Word("do"), 0, 0, AugmentStep(0), Duration(Fraction(1, 1)), 1)
-    la = Modified(Word("la"), 0, 0, AugmentStep(0), Duration(Fraction(1, 1)), 1)
+    do = Modified(Word("do"), 0, 0, None, None, 1)
+    la = Modified(Word("la"), 0, 0, None, None, 1)
 
-    assert abstracttree("do") == Collection([Passage(None, [Line([do])])])
+    assert abstracttree("do") == Collection([UnnamedPassage([Line([do])])])
     assert abstracttree("do\nla") == Collection(
-        [Passage(None, [Line([do]), Line([la])])]
+        [UnnamedPassage([Line([do]), Line([la])])]
     )
     assert abstracttree("do do do\nla") == Collection(
-        [Passage(None, [Line([do, do, do]), Line([la])])]
+        [UnnamedPassage([Line([do, do, do]), Line([la])])]
     )
     assert abstracttree("do do do\nla la la") == Collection(
-        [Passage(None, [Line([do, do, do]), Line([la, la, la])])]
+        [UnnamedPassage([Line([do, do, do]), Line([la, la, la])])]
     )
     assert abstracttree("do\nla\ndo\nla") == Collection(
-        [Passage(None, [Line([do]), Line([la]), Line([do]), Line([la])])]
+        [UnnamedPassage([Line([do]), Line([la]), Line([do]), Line([la])])]
     )
     assert abstracttree("do\n\nla") == Collection(
-        [Passage(None, [Line([do])]), Passage(None, [Line([la])])]
+        [UnnamedPassage([Line([do])]), UnnamedPassage([Line([la])])]
     )
     assert abstracttree("do\n\n\nla") == Collection(
-        [Passage(None, [Line([do])]), Passage(None, [Line([la])])]
+        [UnnamedPassage([Line([do])]), UnnamedPassage([Line([la])])]
     )
     assert abstracttree("do\n\nla\ndo") == Collection(
-        [Passage(None, [Line([do])]), Passage(None, [Line([la]), Line([do])])]
+        [UnnamedPassage([Line([do])]), UnnamedPassage([Line([la]), Line([do])])]
     )
     assert abstracttree("do\n\n\nla\ndo") == Collection(
-        [Passage(None, [Line([do])]), Passage(None, [Line([la]), Line([do])])]
+        [UnnamedPassage([Line([do])]), UnnamedPassage([Line([la]), Line([do])])]
     )
     assert abstracttree("do\n\nla\n\ndo") == Collection(
         [
-            Passage(None, [Line([do])]),
-            Passage(None, [Line([la])]),
-            Passage(None, [Line([do])]),
+            UnnamedPassage([Line([do])]),
+            UnnamedPassage([Line([la])]),
+            UnnamedPassage([Line([do])]),
         ]
     )
     assert abstracttree("do\n\n\nla\n\n\ndo") == Collection(
         [
-            Passage(None, [Line([do])]),
-            Passage(None, [Line([la])]),
-            Passage(None, [Line([do])]),
+            UnnamedPassage([Line([do])]),
+            UnnamedPassage([Line([la])]),
+            UnnamedPassage([Line([do])]),
         ]
     )
 
     assert abstracttree("f = do") == Collection(
-        [Passage(Assignment(Word("f"), []), [Line([do])])]
+        [NamedPassage(Assignment(Word("f"), []), [Line([do])])]
     )
     assert abstracttree("f(x) = do") == Collection(
-        [Passage(Assignment(Word("f"), [Word("x")]), [Line([do])])]
+        [NamedPassage(Assignment(Word("f"), [Word("x")]), [Line([do])])]
     )
     assert abstracttree("f(x, y) = do") == Collection(
-        [Passage(Assignment(Word("f"), [Word("x"), Word("y")]), [Line([do])])]
+        [NamedPassage(Assignment(Word("f"), [Word("x"), Word("y")]), [Line([do])])]
     )
 
     assert abstracttree("f(x, y) = do la") == Collection(
-        [Passage(Assignment(Word("f"), [Word("x"), Word("y")]), [Line([do, la])])]
+        [NamedPassage(Assignment(Word("f"), [Word("x"), Word("y")]), [Line([do, la])])]
     )
     assert abstracttree("f(x, y) = do\nla") == Collection(
         [
-            Passage(
+            NamedPassage(
                 Assignment(Word("f"), [Word("x"), Word("y")]), [Line([do]), Line([la])]
             )
         ]
     )
     assert abstracttree("f(x, y) =\ndo\nla") == Collection(
         [
-            Passage(
+            NamedPassage(
                 Assignment(Word("f"), [Word("x"), Word("y")]), [Line([do]), Line([la])]
             )
         ]
     )
     assert abstracttree("f(x, y) =\ndo\n\nla") == Collection(
         [
-            Passage(Assignment(Word("f"), [Word("x"), Word("y")]), [Line([do])]),
-            Passage(None, [Line([la])]),
+            NamedPassage(Assignment(Word("f"), [Word("x"), Word("y")]), [Line([do])]),
+            UnnamedPassage([Line([la])]),
         ]
     )
 
 
 def test_comments():
-    do = Modified(Word("do"), 0, 0, AugmentStep(0), Duration(Fraction(1, 1)), 1)
-    la = Modified(Word("la"), 0, 0, AugmentStep(0), Duration(Fraction(1, 1)), 1)
+    do = Modified(Word("do"), 0, 0, None, None, 1)
+    la = Modified(Word("la"), 0, 0, None, None, 1)
 
     assert abstracttree("""do""").comments == []
     assert (
@@ -436,7 +470,7 @@ la | two
             """do | one
 la | two"""
         )
-        == Collection([Passage(None, [Line([do]), Line([la])])])
+        == Collection([UnnamedPassage([Line([do]), Line([la])])])
     )
     assert (
         abstracttree(
@@ -444,7 +478,7 @@ la | two"""
 la | two
 """
         )
-        == Collection([Passage(None, [Line([do]), Line([la])])])
+        == Collection([UnnamedPassage([Line([do]), Line([la])])])
     )
     assert (
         abstracttree(
@@ -499,7 +533,7 @@ la | three
 | two
 la | three"""
         )
-        == Collection([Passage(None, [Line([do])]), Passage(None, [Line([la])])])
+        == Collection([UnnamedPassage([Line([do])]), UnnamedPassage([Line([la])])])
     )
     assert (
         abstracttree(
@@ -508,7 +542,7 @@ la | three"""
 la | three
 """
         )
-        == Collection([Passage(None, [Line([do])]), Passage(None, [Line([la])])])
+        == Collection([UnnamedPassage([Line([do])]), UnnamedPassage([Line([la])])])
     )
     assert abstracttree("""f = do | one""").comments == ["| one"]
     assert (
@@ -581,4 +615,91 @@ do | three
 """
         ).comments
         == ["| one\n", "| two\n", "| three\n"]
+    )
+
+
+def test_evaluate():
+    assert evaluate(abstracttree("do").passages[0], Scope({}), 0, ()) == (
+        1.0,
+        [AbstractNote(0.0, 1.0, Word("do"))],
+    )
+
+    assert evaluate(abstracttree("do re mi").passages[0], Scope({}), 0, ()) == (
+        3.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do")),
+            AbstractNote(1.0, 2.0, Word("re")),
+            AbstractNote(2.0, 3.0, Word("mi")),
+        ],
+    )
+
+    assert evaluate(abstracttree("do....").passages[0], Scope({}), 0, ()) == (
+        4.0,
+        [AbstractNote(0.0, 4.0, Word("do"))],
+    )
+
+    assert evaluate(abstracttree("do.. re.. mi..").passages[0], Scope({}), 0, ()) == (
+        6.0,
+        [
+            AbstractNote(0.0, 2.0, Word("do")),
+            AbstractNote(2.0, 4.0, Word("re")),
+            AbstractNote(4.0, 6.0, Word("mi")),
+        ],
+    )
+
+    assert evaluate(abstracttree("___").passages[0], Scope({}), 0, ()) == (
+        3.0,
+        [],
+    )
+
+    assert evaluate(abstracttree("do _ mi").passages[0], Scope({}), 0, ()) == (
+        3.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do")),
+            AbstractNote(2.0, 3.0, Word("mi")),
+        ],
+    )
+
+    assert evaluate(abstracttree("do __ mi").passages[0], Scope({}), 0, ()) == (
+        4.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do")),
+            AbstractNote(3.0, 4.0, Word("mi")),
+        ],
+    )
+
+    assert evaluate(abstracttree("do __ mi _").passages[0], Scope({}), 0, ()) == (
+        5.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do")),
+            AbstractNote(3.0, 4.0, Word("mi")),
+        ],
+    )
+
+    assert evaluate(abstracttree("do\nre\nmi").passages[0], Scope({}), 0, ()) == (
+        1.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do")),
+            AbstractNote(0.0, 1.0, Word("re")),
+            AbstractNote(0.0, 1.0, Word("mi")),
+        ],
+    )
+
+    assert evaluate(abstracttree("do\n_\nre mi").passages[0], Scope({}), 0, ()) == (
+        2.0,
+        [
+            AbstractNote(0.0, 1.0, Word("do")),
+            AbstractNote(0.0, 1.0, Word("re")),
+            AbstractNote(1.0, 2.0, Word("mi")),
+        ],
+    )
+
+    assert evaluate(abstracttree(">do").passages[0], Scope({}), 0, ()) == (
+        1.0,
+        [AbstractNote(0.0, 1.0, Word("do"), octave=1)],
+    )
+
+    assert evaluate(abstracttree("do+1").passages[0], Scope({}), 0, ()) == (
+        1.0,
+        [AbstractNote(0.0, 1.0, Word("do"), augmentations=(AugmentStep(1),))],
     )

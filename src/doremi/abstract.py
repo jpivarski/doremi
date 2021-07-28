@@ -2,11 +2,52 @@
 
 from fractions import Fraction
 from dataclasses import dataclass, field
-from typing import List, Optional, Union, Generator
+from typing import List, Tuple, Dict, Optional, Union, Generator
 
 import lark
 
 import doremi.parsing
+
+
+def is_rest(word: str) -> bool:
+    return all(x == "_" for x in word)
+
+
+@dataclass
+class AbstractNote:
+    start: float
+    stop: float
+    word: "Word"
+    octave: int = field(default=0)
+    augmentations: Tuple["Augmentation"] = field(default=())
+
+    def copy(self) -> "AbstractNote":
+        return AbstractNote(
+            self.start,
+            self.stop,
+            self.word,
+            self.octave,
+            self.augmentation,
+        )
+
+    def inplace_shift(self, shift: float) -> None:
+        self.start += shift
+        self.stop += shift
+
+    def inplace_scale(self, scale: float) -> None:
+        self.start *= scale
+        self.stop *= scale
+
+
+@dataclass
+class Scope:
+    symbols: Dict[str, "UnnamedPassage"]
+
+    def has(self, symbol: str) -> bool:
+        return symbol in self.symbols
+
+    def get(self, symbol: str) -> Optional["UnnamedPassage"]:
+        return self.symbols.get(symbol)
 
 
 class AST:
@@ -73,7 +114,7 @@ class Modified(AST):
     absolute: int
     octave: int
     augmentation: Augmentation
-    duration: Duration
+    duration: Optional[Duration]
     repetition: int
     parsingtree: Optional[lark.tree.Tree] = field(
         default=None, repr=False, compare=False, hash=False
@@ -97,13 +138,132 @@ class Assignment(AST):
     )
 
 
-@dataclass
 class Passage(AST):
-    assignment: Optional[Assignment]
+    pass
+
+
+@dataclass
+class NamedPassage(Passage):
+    assignment: Assignment
     lines: List[Line]
     parsingtree: Optional[lark.tree.Tree] = field(
         default=None, repr=False, compare=False, hash=False
     )
+
+
+@dataclass
+class UnnamedPassage(Passage):
+    lines: List[Line]
+    parsingtree: Optional[lark.tree.Tree] = field(
+        default=None, repr=False, compare=False, hash=False
+    )
+
+
+def evaluate(
+    node: Union[Word, Call, Modified, Line, UnnamedPassage],
+    scope: Scope,
+    octave: int,
+    augmentations: Tuple[Augmentation],
+) -> Tuple[float, List[AbstractNote]]:
+
+    if isinstance(node, Word):
+        if scope.has(node.val):
+            return evaluate(
+                Call(node.val, []),
+                scope,
+                octave,
+                augmentations,
+            )
+        elif is_rest(node.val):
+            return float(len(node.val)), []
+        else:
+            note = AbstractNote(
+                0.0,
+                1.0,
+                node,
+                octave,
+                augmentations,
+            )
+            return 1.0, [note]
+
+    elif isinstance(node, Call):
+        raise NotImplementedError
+
+    elif isinstance(node, Modified):
+        if node.absolute > 0:
+            augmentations = augmentations[: -node.absolute]
+        if node.augmentation is not None:
+            augmentations = augmentations + (node.augmentation,)
+
+        if isinstance(node.expression, Expression):
+            natural_duration, notes = evaluate(
+                node.expression,
+                scope,
+                octave + node.octave,
+                augmentations,
+            )
+
+        else:
+            raise NotImplementedError
+
+        if node.duration is not None:
+            factor = float(node.duration.amount) / natural_duration
+            for note in notes:
+                note.inplace_scale(factor)
+            natural_duration = float(node.duration.amount)
+
+        if node.repetition == 1:
+            duration = natural_duration
+
+        else:
+            all_notes = list(notes)
+            for i in range(1, node.repetition):
+                new_notes = [x.copy() for x in notes]
+                for note in new_notes:
+                    note.inplace_shift(i * natural_duration)
+
+            duration = node.repetition * natural_duration
+            notes = all_notes
+
+        return duration, notes
+
+    elif isinstance(node, Line):
+        last_stop = 0.0
+        all_notes = []
+        for modified in node.modified:
+            duration, notes = evaluate(
+                modified,
+                scope,
+                octave,
+                augmentations,
+            )
+            for note in notes:
+                note.inplace_shift(last_stop)
+
+            all_notes.extend(notes)
+            last_stop += duration
+
+        return last_stop, all_notes
+
+    elif isinstance(node, UnnamedPassage):
+        max_duration = 0.0
+        all_notes = []
+        for line in node.lines:
+            duration, notes = evaluate(
+                line,
+                scope,
+                octave,
+                augmentations,
+            )
+
+            all_notes.extend(notes)
+            if max_duration < duration:
+                max_duration = duration
+
+        return max_duration, all_notes
+
+    else:
+        raise AssertionError
 
 
 @dataclass
@@ -150,24 +310,19 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
         if node.data == "assign_passage":
             subnodes = [x for x in node.children if isinstance(x, lark.tree.Tree)]
 
-            if len(subnodes) == 2:
-                assignment = to_ast(subnodes[0])
-            else:
-                assert len(subnodes) == 1
-                assignment = None
-
             passage = subnodes[-1]
             assert isinstance(passage, lark.tree.Tree) and passage.data == "passage"
+            lines = [
+                to_ast(x)
+                for x in passage.children
+                if not isinstance(x, lark.lexer.Token)
+            ]
 
-            return Passage(
-                assignment,
-                [
-                    to_ast(x)
-                    for x in passage.children
-                    if not isinstance(x, lark.lexer.Token)
-                ],
-                node,
-            )
+            if len(subnodes) == 2:
+                return NamedPassage(to_ast(subnodes[0]), lines, node)
+            else:
+                assert len(subnodes) == 1
+                return UnnamedPassage(lines, node)
 
         elif node.data == "assign":
             assert 1 <= len(node.children) <= 2
@@ -272,7 +427,7 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                 index -= 1
 
             else:
-                duration = Duration(Fraction(1, 1))
+                duration = None
 
             if node.children[index].data == "augmentation":
                 subnode = node.children[index].children[0]
@@ -287,7 +442,11 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                         amount = len(subnode.children)
                     if subnode.children[0].type == "STEP_DOWN":
                         amount *= -1
-                    augmentation = AugmentStep(amount, subnode)
+
+                    if amount == 0:
+                        augmentation = None
+                    else:
+                        augmentation = AugmentStep(amount, subnode)
 
                 elif (
                     subnode.data == "upward_degree" or subnode.data == "downward_degree"
@@ -301,7 +460,11 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                         amount = len(subnode.children)
                     if subnode.children[0].type == "DEGREE_DOWN":
                         amount *= -1
-                    augmentation = AugmentDegree(amount, subnode)
+
+                    if amount == 0:
+                        augmentation = None
+                    else:
+                        augmentation = AugmentDegree(amount, subnode)
 
                 else:
                     ints = subnode.children[0].children
@@ -315,12 +478,16 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                         ratio = Fraction(int(ints[0]), int(ints[1]))
                     else:
                         raise AssertionError(subnode.children[0])
-                    augmentation = AugmentRatio(ratio, subnode)
+
+                    if ratio == Fraction(1, 1):
+                        augmentation = None
+                    else:
+                        augmentation = AugmentRatio(ratio, subnode)
 
                 index -= 1
 
             else:
-                augmentation = AugmentStep(0)
+                augmentation = None
 
             return Modified(
                 expression, absolute, octave, augmentation, duration, repetition, node

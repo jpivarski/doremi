@@ -14,24 +14,13 @@ from typing import List, Set, Tuple, Dict, Mapping, Optional, Union
 import doremi.abstract
 
 
-@dataclass
 class Note:
-    duration: Fraction
-
-
-@dataclass
-class Rest(Note):
-    def with_duration(duration: Fraction):
-        return Rest(duration)
+    pass
 
 
 @dataclass
 class RealNote(Note):
     pitch: float  # Hz
-    absolute: int = field(default=1)
-
-    def with_duration(duration: Fraction):
-        return RealNote(duration, self.pitch)
 
     @property
     def frequency(self) -> float:
@@ -45,10 +34,6 @@ class RealNote(Note):
 @dataclass
 class MIDINote(Note):
     pitch: int  # 60 = C4 (middle C)
-    absolute: int = field(default=1)
-
-    def with_duration(duration: Fraction):
-        return MIDINote(duration, self.pitch)
 
     @property
     def frequency(self) -> float:
@@ -64,13 +49,10 @@ class MIDINote(Note):
 
 
 @dataclass
-class Voice:
-    notes: List[Note]
-
-
-@dataclass
-class Fragment:
-    voices: List[Voice]
+class TimedNote:
+    note: Note
+    start: float
+    stop: float
 
 
 @dataclass
@@ -80,11 +62,9 @@ class Scale:
     name: Optional[str] = field(default=None, repr=False, compare=False, hash=False)
     tonic: Optional[str] = field(default=None, repr=False, compare=False, hash=False)
 
-    def __getitem__(self, symbol: str) -> Fragment:
-        out = self.symbols.get(symbol)
-        if out is None and all(x == "_" for x in symbol):
-            return Rest(Fraction(len(symbol), 1))
-        elif out is None:
+    def __getitem__(self, symbol: str) -> Note:
+        out = self.notes.get(symbol)
+        if out is None:
             raise KeyError(f"undefined symbol: {symbol!r}")
         else:
             return out
@@ -96,19 +76,19 @@ class Scale:
 
         # relies on dict-ordering (Python 3.6+)
         items = iter(self.notes.items())
-        first_name, first_note = next(items)
+        first_symbol, first_note = next(items)
 
         if all(isinstance(note, MIDINote) for _, note in self.notes.items()):
             diffs = {
-                note.pitch - first_note.pitch: name
-                for name, note in self.notes.items()
+                note.pitch - first_note.pitch: symbol
+                for symbol, note in self.notes.items()
             }
 
-            empty = "." * min(len(name) for name in self.notes)
+            empty = "-" * min(len(symbol) for symbol in self.notes)
             if self.tonic is None:
-                strings = [f"{first_name}({first_note.frequency} Hz)"]
+                strings = [f"{first_symbol}({first_note.frequency} Hz)"]
             else:
-                strings = [f"{first_name}({self.tonic})"]
+                strings = [f"{first_symbol}({self.tonic})"]
             for i in range(1, len(solfedge)):
                 if i in diffs:
                     strings.append(diffs[i])
@@ -117,76 +97,44 @@ class Scale:
 
         else:
             base_frequency = first_note.frequency
-            strings = [f"{first_name}({base_frequency:.3g} Hz)"]
-            for name, note in items:
+            strings = [f"{first_symbol}({base_frequency:.3g} Hz)"]
+            for symbol, note in items:
                 ratio = note.frequency / base_frequency
                 as_fraction = Fraction.from_float(ratio).limit_denominator(100)
                 if 0.99 < ratio / as_fraction < 1.01:
-                    strings.append(f"{name}({str(as_fraction)})")
+                    strings.append(f"{symbol}({str(as_fraction)})")
                 else:
-                    strings.append(f"{name}({note.frequency} Hz)")
+                    strings.append(f"{symbol}({note.frequency} Hz)")
 
         return f"<Scale {self.name!r} {' '.join(strings)}{accidentals}>"
 
 
-MakeScale = Mapping[str, Union[None, numbers.Real, str]]
+MakeScale = Mapping[str, Union[numbers.Real, str]]
 AnyScale = Union[Scale, str, MakeScale]
 
 
 @dataclass
 class Composition:
     scale: Scale
-    # vocabulary: Vocabulary
-    fragments: List[Fragment]
+    # vocabulary: doremi.abstract.Vocabulary
 
 
-# def to_fragment(modified: doremi.abstract.Modified, vocabulary: Vocabulary) -> Fragment:
-#     if isinstance(modified.expression, doremi.abstract.Word):
-#         raise NotImplementedError
+def compose(
+    source: str,
+    scale: AnyScale = "C major",
+    # vocabulary: Optional[doremi.abstract.Vocabulary] = None,
+) -> Composition:
 
-
-#     elif isinstance(modified.expression, doremi.abstract.Call):
-#         raise NotImplementedError
-
-#     else:
-#         raise NotImplementedError
-
-
-def compose(source: str, scale: AnyScale = "C major") -> Composition:
-    collection = doremi.abstract.abstracttree(source)
     scale = get_scale(scale)
+    collection = doremi.abstract.abstracttree(source)
+    passages, vocabulary = collection.evaluate(vocabulary)
 
-    vocabulary = Derived({}, scale)
-    fragments = []
-
-    for passage in collection.passages:
-        current = -1
-        voices = []
-
-        for line in passage.lines:
-            current += 1
-            voices.append(Voice([]))
-
-            duration = Fraction(0, 1)
-            for modified in line.modified:
-                fragment = to_fragment(modified, vocabulary)
-
-
-
-            print(line)
-            print(fragment)
-
-            print()
-
-        raise Exception
-
-
-
+    raise NotImplementedError
 
 
 notes: Dict[str, MIDINote] = {}
 for i in range(128):
-    notes[str(i)] = MIDINote(Fraction(1, 1), i)
+    notes[str(i)] = MIDINote(i)
 
 # http://www.music.mcgill.ca/~ich/classes/mumt306/StandardMIDIfileformat.html
 notes["A0"] = notes["a0"] = notes["21"]
@@ -301,13 +249,13 @@ notes["G9"] = notes["g9"] = notes["127"]
 def make_scale(source: MakeScale, name: Optional[str] = None) -> Scale:
     included_notes: List[Tuple[str, Note]] = []
     for k, v in source.items():
-        if v is None:
-            included_notes.append((k, Rest(Fraction(1, 1))))
+        if doremi.abstract.is_rest(k):
+            raise ValueError("names with all underscores are reserved for rests")
 
-        elif isinstance(v, numbers.Real):
+        if isinstance(v, numbers.Real):
             if v <= 0:
                 raise ValueError("note frequencies (in Hz) must be positive: {v!r}")
-            included_notes.append((k, RealNote(Fraction(1, 1), value)))
+            included_notes.append((k, RealNote(value)))
 
         elif v in notes:
             included_notes.append((k, notes[v]))
@@ -321,18 +269,18 @@ def make_scale(source: MakeScale, name: Optional[str] = None) -> Scale:
 
 # https://en.wikipedia.org/wiki/Solf%C3%A8ge#Movable_do_solf%C3%A8ge
 solfedge = [
-    "do",   # 0 half-steps above do (major)
-    "ra",   # 1 half-steps above do
-    "re",   # 2 half-steps above do (major)
-    "me",   # 3 half-steps above do
-    "mi",   # 4 half-steps above do (major)
-    "fa",   # 5 half-steps above do (major)
-    "se",   # 6 half-steps above do
-    "so",   # 7 half-steps above do (major)
-    "le",   # 8 half-steps above do
-    "la",   # 9 half-steps above do (major)
-    "te",   # 10 half-steps above do
-    "ti",   # 11 half-steps above do (major)
+    "do",  # 0 half-steps above do (major)
+    "ra",  # 1 half-steps above do
+    "re",  # 2 half-steps above do (major)
+    "me",  # 3 half-steps above do
+    "mi",  # 4 half-steps above do (major)
+    "fa",  # 5 half-steps above do (major)
+    "se",  # 6 half-steps above do
+    "so",  # 7 half-steps above do (major)
+    "le",  # 8 half-steps above do
+    "la",  # 9 half-steps above do (major)
+    "te",  # 10 half-steps above do
+    "ti",  # 11 half-steps above do (major)
 ]
 
 
@@ -359,7 +307,9 @@ def named_scale(name: str, accidentals: bool = True) -> Scale:
             try:
                 base_pitch = notes[tonic[0] + accidental + "4"].pitch
             except KeyError:
-                raise ValueError(f"unrecognized note name: {tonic[0].capitalize() + accidental}")
+                raise ValueError(
+                    f"unrecognized note name: {tonic[0].capitalize() + accidental}"
+                )
 
             pitches = named_scale.data.get(mode)
             if pitches is not None:
@@ -370,10 +320,14 @@ def named_scale(name: str, accidentals: bool = True) -> Scale:
                         excluded.append((x, str(base_pitch + i)))
 
             else:
-                raise ValueError(f"unrecognized mode name: {mode} (modes are single words, not hyphenated)")
+                raise ValueError(
+                    f"unrecognized mode name: {mode} (modes are single words, not hyphenated)"
+                )
 
         else:
-            raise ValueError(f"unrecognized scale name: {name} (must be like \"C# minor\", with a space between starting pitch, if present, and mode name)")
+            raise ValueError(
+                f'unrecognized scale name: {name} (must be like "C# minor", with a space between starting pitch, if present, and mode name)'
+            )
 
         named_scale.cache[lowered_name] = (
             make_scale(dict(included)).notes,
@@ -397,9 +351,9 @@ with open(allthescales) as file:
     reader = csv.reader(file)
     next(reader)  # skip header
     for row in reader:
-        named_scale.data[row[2].lower()] = set(accumulate((
-            int(x) for x in row[3].strip()[:-1]
-        ), initial=0))
+        named_scale.data[row[2].lower()] = set(
+            accumulate((int(x) for x in row[3].strip()[:-1]), initial=0)
+        )
 
 
 def get_scale(source: AnyScale) -> Scale:

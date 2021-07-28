@@ -6,6 +6,31 @@ import doremi.parsing
 import doremi.abstract
 import doremi.concrete
 
-from doremi.concrete import Note, Rest, RealNote, MIDINote, Voice, Fragment, Scale, get_scale, Composition, compose, make_scale, named_scale, get_scale
+from doremi.concrete import (
+    Note,
+    RealNote,
+    MIDINote,
+    TimedNote,
+    Scale,
+    get_scale,
+    Composition,
+    compose,
+    make_scale,
+    named_scale,
+    get_scale,
+)
 
-__all__ = ("__version__", "Note", "Rest", "RealNote", "MIDINote", "Voice", "Fragment", "Scale", "get_scale", "Composition", "compose", "make_scale", "named_scale", "get_scale")
+__all__ = (
+    "__version__",
+    "Note",
+    "RealNote",
+    "MIDINote",
+    "TimedNote",
+    "Scale",
+    "get_scale",
+    "Composition",
+    "compose",
+    "make_scale",
+    "named_scale",
+    "get_scale",
+)
