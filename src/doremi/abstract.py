@@ -680,3 +680,10 @@ class MismatchingArguments(DoremiError):
         self.error_message = "wrong number of arguments in function call"
         self.node = node
         self.context = None
+
+
+class NoteNotInScale(DoremiError):
+    def __init__(self, node: lark.tree.Tree):
+        self.error_message = "cannot augment by a scale degree because this note is not in the scale"
+        self.node = node
+        self.context = None

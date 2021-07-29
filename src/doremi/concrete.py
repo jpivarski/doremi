@@ -25,6 +25,15 @@ class Note:
 class RealNote(Note):
     frequency: float  # Hz
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Note):
+            return self.frequency == other.frequency
+        else:
+            return False
+
+    def octaves_difference(self, other: Note) -> int:
+        return int(math.floor(other.frequency / self.frequency))
+
     def same_pitch_class(self, other: Note) -> bool:
         ratio = self.frequency / other.frequency
         return 2 ** math.log2(ratio) == ratio
@@ -32,15 +41,52 @@ class RealNote(Note):
     def with_octave(self, octave: int) -> Note:
         return RealNote(self.frequency * (2 ** octave))
 
+    def with_augmentation(
+        self, augmentation: doremi.abstract.Augmentation, scale: "Scale"
+    ) -> Note:
+        if isinstance(augmentation, doremi.abstract.AugmentStep):
+            return RealNote(self.frequency * 2 ** (augmentation.amount / 12.0))
+
+        elif isinstance(augmentation, doremi.abstract.AugmentDegree):
+            scale_notes = list(scale.notes.values())
+            for i, note in enumerate(scale_notes):
+                if self.same_pitch_class(note):
+                    octaves = note.octaves_difference(self)
+                    more_octaves = (i + augmentation.amount) // len(scale_notes)
+                    out = scale_notes[(i + augmentation.amount) % len(scale_notes)]
+                    return out.with_octave(octaves + more_octaves)
+            else:
+                raise doremi.abstract.NoteNotInScale(augmentation.parsingtree)
+
+        elif isinstance(augmentation, doremi.abstract.AugmentRatio):
+            return RealNote(self.frequency * float(augmentation.amount))
+
+        else:
+            raise AssertionError(repr(augmentation))
+
 
 @dataclass
 class MIDINote(Note):
     pitch: int  # 60 = C4 (middle C)
 
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, MIDINote):
+            return self.pitch == other.pitch
+        elif isinstance(other, Note):
+            return self.frequency == other.frequency
+        else:
+            return False
+
     @property
     def frequency(self) -> float:
         # https://www.inspiredacoustics.com/en/MIDI_note_numbers_and_center_frequencies
         return 440.0 * 2.0 ** ((self.pitch - 69) / 12.0)
+
+    def octaves_difference(self, other: Note) -> int:
+        if isinstance(other, MIDINote):
+            return (other.pitch - self.pitch) // 12
+        else:
+            return int(math.floor(other.frequency / self.frequency))
 
     def same_pitch_class(self, other: Note) -> bool:
         if isinstance(other, MIDINote):
@@ -55,6 +101,29 @@ class MIDINote(Note):
             return out
         else:
             return RealNote(out.frequency)
+
+    def with_augmentation(
+        self, augmentation: doremi.abstract.Augmentation, scale: "Scale"
+    ) -> Note:
+        if isinstance(augmentation, doremi.abstract.AugmentStep):
+            return MIDINote(self.pitch + augmentation.amount)
+
+        elif isinstance(augmentation, doremi.abstract.AugmentDegree):
+            scale_notes = list(scale.notes.values())
+            for i, note in enumerate(scale_notes):
+                if self.same_pitch_class(note):
+                    octaves = note.octaves_difference(self)
+                    more_octaves = (i + augmentation.amount) // len(scale_notes)
+                    out = scale_notes[(i + augmentation.amount) % len(scale_notes)]
+                    return out.with_octave(octaves + more_octaves)
+            else:
+                raise doremi.abstract.NoteNotInScale(augmentation.parsingtree)
+
+        elif isinstance(augmentation, doremi.abstract.AugmentRatio):
+            return RealNote(self.frequency * float(augmentation.amount))
+
+        else:
+            raise AssertionError(repr(augmentation))
 
 
 @dataclass
@@ -170,7 +239,8 @@ class Composition:
                 note = note.with_octave(abstract_note.octave)
 
             if len(abstract_note.augmentations) != 0:
-                note = note.with_augmentations(abstract_note.augmentations, self.scale)
+                for augmentation in abstract_note.augmentations[::-1]:
+                    note = note.with_augmentation(augmentation, self.scale)
 
             notes.append(
                 TimedNote(
