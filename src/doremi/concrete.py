@@ -352,6 +352,18 @@ class Composition:
 
         return array
 
+    def play(
+        self,
+        scale: Optional[AnyScale] = None,
+        bpm: Optional[float] = None,
+        soundfont: Optional[str] = None,
+        sample_rate: int = 44100,
+    ):
+        import IPython.display
+
+        array = self.fluidsynth(scale, bpm, soundfont, sample_rate)
+        return IPython.display.Audio(array.sum(axis=1) // 2, rate=sample_rate)
+
     def show_notes(
         self,
         lines_per_beat: float = 1.0,

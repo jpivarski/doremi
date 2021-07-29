@@ -129,6 +129,7 @@ class Fluidsynth:
         fluid_settings_setnum(self.settings, b"synth.gain", 0.2)
         fluid_settings_setnum(self.settings, b"synth.sample-rate", self.sample_rate)
         fluid_settings_setint(self.settings, b"synth.midi-channels", 256)
+        fluid_settings_setint(self.settings, b"synth.lock-memory", 0)
 
         self.synthesizer = new_fluid_synth(self.settings)
 
