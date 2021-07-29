@@ -263,12 +263,18 @@ class Composition:
             if min_pitch < 21 or max_pitch > 127:
                 raise NotImplementedError
 
-            print("".join(
-                x.ljust(3) for x in names_flat[min_pitch - 21 : max_pitch - 21]
-            ), file=stream)
-            print("".join(
-                x.ljust(3) for x in names_sharp[min_pitch - 21 : max_pitch - 21]
-            ), file=stream)
+            print(
+                "".join(
+                    x.ljust(3) for x in names_flat[min_pitch - 21 : max_pitch - 21]
+                ),
+                file=stream,
+            )
+            print(
+                "".join(
+                    x.ljust(3) for x in names_sharp[min_pitch - 21 : max_pitch - 21]
+                ),
+                file=stream,
+            )
 
             num_timesteps = int(math.ceil(self.duration_in_seconds / min_duration))
             for timestep in range(num_timesteps):
@@ -276,7 +282,9 @@ class Composition:
 
                 tlo, thi = timestep * min_duration, (timestep + 1) * min_duration
                 start = [note for note in notes if tlo <= note.start < thi]
-                going = [note for note in notes if note.start < tlo and note.stop >= thi]
+                going = [
+                    note for note in notes if note.start < tlo and note.stop >= thi
+                ]
 
                 for note in going:
                     chars[note.note.pitch - min_pitch] = " | "

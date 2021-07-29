@@ -57,10 +57,20 @@ def test_augmentation():
     assert doremi.compose("vdo<5").notes[0].note == doremi.compose("vvmi").notes[0].note
     assert doremi.compose("vdo<6").notes[0].note == doremi.compose("vvre").notes[0].note
     assert doremi.compose("vdo<7").notes[0].note == doremi.compose("vvdo").notes[0].note
-    assert doremi.compose("vdo<8").notes[0].note == doremi.compose("vvvti").notes[0].note
-    assert doremi.compose("vdo<9").notes[0].note == doremi.compose("vvvla").notes[0].note
+    assert (
+        doremi.compose("vdo<8").notes[0].note == doremi.compose("vvvti").notes[0].note
+    )
+    assert (
+        doremi.compose("vdo<9").notes[0].note == doremi.compose("vvvla").notes[0].note
+    )
 
     assert doremi.compose("do * 2").notes[0].note == doremi.compose("^do").notes[0].note
-    assert doremi.compose("do * 4").notes[0].note == doremi.compose("^^do").notes[0].note
-    assert doremi.compose("do * 1/2").notes[0].note == doremi.compose("vdo").notes[0].note
-    assert doremi.compose("do * 1/4").notes[0].note == doremi.compose("vvdo").notes[0].note
+    assert (
+        doremi.compose("do * 4").notes[0].note == doremi.compose("^^do").notes[0].note
+    )
+    assert (
+        doremi.compose("do * 1/2").notes[0].note == doremi.compose("vdo").notes[0].note
+    )
+    assert (
+        doremi.compose("do * 1/4").notes[0].note == doremi.compose("vvdo").notes[0].note
+    )
