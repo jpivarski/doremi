@@ -562,8 +562,6 @@ def make_scale(source: MakeScale, name: Optional[str] = None) -> Scale:
     for k, v in source.items():
         if doremi.abstract.is_rest(k):
             raise ValueError("symbols must not consist entirely of underscores (rest)")
-        elif k.startswith("v"):
-            raise ValueError("symbols must not start with the letter 'v' (octave down)")
 
         if isinstance(v, numbers.Real):
             if v <= 0:

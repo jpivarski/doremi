@@ -6,7 +6,7 @@ import lark
 grammar = r"""
 start: BLANK* assign_passage (BLANK BLANK+ assign_passage)* BLANK_END*
 
-assign_passage: OCTAVE_DOWNS? assign "=" BLANK? passage | passage
+assign_passage: assign "=" BLANK? passage | passage
 assign: WORD | WORD "(" defargs? ")"
 defargs: WORD+
 passage: line (BLANK line)*
@@ -37,10 +37,10 @@ ratio: POSITIVE_INT ("/" POSITIVE_INT)?
 expression: WORD | WORD "(" args? ")" | "{" modified+ "}"
 args: modified+
 
-OCTAVE_UP: "^"
-OCTAVE_UPS: /\^+/
-OCTAVE_DOWN: "v"
-OCTAVE_DOWNS: /v+/
+OCTAVE_UP: "'"
+OCTAVE_UPS: /\'+/
+OCTAVE_DOWN: ","
+OCTAVE_DOWNS: /,+/
 STEP_UP: "+"
 STEP_UPS: /\++/
 STEP_DOWN: "-"

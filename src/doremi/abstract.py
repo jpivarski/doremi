@@ -353,8 +353,6 @@ def get_comments(
     else:
         if node.type == "BLANK" or node.type == "BLANK_END":
             yield node
-        elif node.type == "OCTAVE_DOWNS":
-            raise SymbolStartsWithV(node)
         else:
             raise AssertionError(repr(node))
 
@@ -648,13 +646,6 @@ class DoremiError(Exception):
 class SymbolAllUnderscores(DoremiError):
     def __init__(self, node: lark.tree.Tree):
         self.error_message = "symbols must not consist entirely of underscores (rest)"
-        self.node = node
-        self.context = None
-
-
-class SymbolStartsWithV(DoremiError):
-    def __init__(self, node: lark.tree.Tree):
-        self.error_message = "symbols must not start with the letter 'v' (octave down)"
         self.node = node
         self.context = None
 
