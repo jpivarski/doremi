@@ -8,7 +8,7 @@ start: BLANK* assign_passage (BLANK BLANK+ assign_passage)* BLANK_END*
 
 assign_passage: OCTAVE_DOWNS? assign "=" BLANK? passage | passage
 assign: WORD | WORD "(" defargs? ")"
-defargs: WORD ("," WORD)*
+defargs: WORD+
 passage: line (BLANK line)*
 
 line: modified+
@@ -35,7 +35,7 @@ repetition: "~" POSITIVE_INT
 
 ratio: POSITIVE_INT ("/" POSITIVE_INT)?
 expression: WORD | WORD "(" args? ")" | "{" modified+ "}"
-args: line ("," line)*
+args: modified+
 
 OCTAVE_UP: "^"
 OCTAVE_UPS: /\^+/

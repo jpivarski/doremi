@@ -246,8 +246,8 @@ def test_call():
     dur3 = Duration(Fraction(3, 1))
     dur32 = Duration(Fraction(3, 2))
 
-    x = Line([Modified(Word("x"), 0, 0, None, None, 1)])
-    y = Line([Modified(Word("y"), 0, 0, None, None, 1)])
+    x = Modified(Word("x"), 0, 0, None, None, 1)
+    y = Modified(Word("y"), 0, 0, None, None, 1)
 
     assert abstracttree("f") == Collection(
         [UnnamedPassage([Line([Modified(Word("f"), 0, 0, None, None, 1)])])]
@@ -255,10 +255,11 @@ def test_call():
     assert abstracttree("f()") == Collection(
         [UnnamedPassage([Line([Modified(Word("f"), 0, 0, None, None, 1)])])]
     )
+
     assert abstracttree("f(x)") == Collection(
         [UnnamedPassage([Line([Modified(Call(Word("f"), [x]), 0, 0, None, None, 1)])])]
     )
-    assert abstracttree("f(x, y)") == Collection(
+    assert abstracttree("f(x y)") == Collection(
         [
             UnnamedPassage(
                 [Line([Modified(Call(Word("f"), [x, y]), 0, 0, None, None, 1)])]
@@ -266,42 +267,42 @@ def test_call():
         ]
     )
 
-    assert abstracttree("@f(x, y)") == Collection(
+    assert abstracttree("@f(x y)") == Collection(
         [
             UnnamedPassage(
                 [Line([Modified(Call(Word("f"), [x, y]), 1, 0, None, None, 1)])]
             )
         ]
     )
-    assert abstracttree("^f(x, y)") == Collection(
+    assert abstracttree("^f(x y)") == Collection(
         [
             UnnamedPassage(
                 [Line([Modified(Call(Word("f"), [x, y]), 0, 1, None, None, 1)])]
             )
         ]
     )
-    assert abstracttree("f(x, y)+") == Collection(
+    assert abstracttree("f(x y)+") == Collection(
         [
             UnnamedPassage(
                 [Line([Modified(Call(Word("f"), [x, y]), 0, 0, aug1, None, 1)])]
             )
         ]
     )
-    assert abstracttree("f(x, y)...") == Collection(
+    assert abstracttree("f(x y)...") == Collection(
         [
             UnnamedPassage(
                 [Line([Modified(Call(Word("f"), [x, y]), 0, 0, None, dur3, 1)])]
             )
         ]
     )
-    assert abstracttree("f(x, y):3/2") == Collection(
+    assert abstracttree("f(x y):3/2") == Collection(
         [
             UnnamedPassage(
                 [Line([Modified(Call(Word("f"), [x, y]), 0, 0, None, dur32, 1)])]
             )
         ]
     )
-    assert abstracttree("f(x, y) ~ 4") == Collection(
+    assert abstracttree("f(x y) ~ 4") == Collection(
         [
             UnnamedPassage(
                 [Line([Modified(Call(Word("f"), [x, y]), 0, 0, None, None, 4)])]
@@ -309,7 +310,7 @@ def test_call():
         ]
     )
 
-    assert abstracttree("@^f(x, y)+:3/2 ~ 4") == Collection(
+    assert abstracttree("@^f(x y)+:3/2 ~ 4") == Collection(
         [
             UnnamedPassage(
                 [Line([Modified(Call(Word("f"), [x, y]), 1, 1, aug1, dur32, 4)])]
@@ -402,28 +403,28 @@ def test_passage():
     assert abstracttree("f(x) = do") == Collection(
         [NamedPassage(Assignment(Word("f"), [Word("x")]), [Line([do])])]
     )
-    assert abstracttree("f(x, y) = do") == Collection(
+    assert abstracttree("f(x y) = do") == Collection(
         [NamedPassage(Assignment(Word("f"), [Word("x"), Word("y")]), [Line([do])])]
     )
 
-    assert abstracttree("f(x, y) = do la") == Collection(
+    assert abstracttree("f(x y) = do la") == Collection(
         [NamedPassage(Assignment(Word("f"), [Word("x"), Word("y")]), [Line([do, la])])]
     )
-    assert abstracttree("f(x, y) = do\nla") == Collection(
+    assert abstracttree("f(x y) = do\nla") == Collection(
         [
             NamedPassage(
                 Assignment(Word("f"), [Word("x"), Word("y")]), [Line([do]), Line([la])]
             )
         ]
     )
-    assert abstracttree("f(x, y) =\ndo\nla") == Collection(
+    assert abstracttree("f(x y) =\ndo\nla") == Collection(
         [
             NamedPassage(
                 Assignment(Word("f"), [Word("x"), Word("y")]), [Line([do]), Line([la])]
             )
         ]
     )
-    assert abstracttree("f(x, y) =\ndo\n\nla") == Collection(
+    assert abstracttree("f(x y) =\ndo\n\nla") == Collection(
         [
             NamedPassage(Assignment(Word("f"), [Word("x"), Word("y")]), [Line([do])]),
             UnnamedPassage([Line([la])]),
@@ -898,9 +899,9 @@ def test_evaluate():
 
 
 def test_evaluate_assign():
-    definition = abstracttree("f(x, y) = y x").passages[0]
+    definition = abstracttree("f(x y) = y x").passages[0]
     assert evaluate(
-        abstracttree("do f(mi, re) fa so").passages[0],
+        abstracttree("do f(mi re) fa so").passages[0],
         Scope({"f": definition}),
         0,
         (),
@@ -916,7 +917,7 @@ def test_evaluate_assign():
         ],
     )
     assert evaluate(
-        abstracttree("do f(mi mi, re re) fa so").passages[0],
+        abstracttree("do f({mi mi} {re re}) fa so").passages[0],
         Scope({"f": definition}),
         0,
         (),
@@ -939,7 +940,7 @@ def test_evaluate_assign():
 
     with pytest.raises(MismatchingArguments):
         evaluate(
-            abstracttree("f(la, la, la)").passages[0],
+            abstracttree("f(la la la)").passages[0],
             Scope({"f": definition}),
             0,
             (),
@@ -1005,9 +1006,9 @@ def test_evaluate_assign():
 def test_evaluate_midlevel():
     assert abstracttree(
         """
-f(x, y) = y x
+f(x y) = y x
 
-do f(mi mi, re re) fa
+do f({mi mi} {re re}) fa
 """
     ).evaluate(None) == (
         6.0,
