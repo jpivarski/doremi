@@ -63,6 +63,10 @@ class TimedNote:
     start: float  # real time in seconds
     stop: float  # real time in seconds
 
+    @property
+    def duration(self):
+        return self.stop - self.start
+
 
 @dataclass
 class Scale:
@@ -182,43 +186,62 @@ class Composition:
         notes = self.notes
 
         if all(isinstance(note.note, MIDINote) for note in notes):
-            min_pitch = min(note.note.pitch for note in notes)
-            max_pitch = min(note.note.pitch for note in notes)
+            min_pitch = min(note.note.pitch for note in notes) - 2
+            max_pitch = max(note.note.pitch for note in notes) + 3
+            min_duration = min(note.duration for note in notes)
 
             if min_pitch < 21 or max_pitch > 127:
                 raise NotImplementedError
 
+            print("".join(
+                x.ljust(3) for x in names_flat[min_pitch - 21 : max_pitch - 21]
+            ), file=stream)
+            print("".join(
+                x.ljust(3) for x in names_sharp[min_pitch - 21 : max_pitch - 21]
+            ), file=stream)
 
+            num_timesteps = int(math.ceil(self.duration_in_seconds / min_duration))
+            for timestep in range(num_timesteps):
+                chars = ["   " for i in range(max_pitch - min_pitch)]
 
+                tlo, thi = timestep * min_duration, (timestep + 1) * min_duration
+                start = [note for note in notes if tlo <= note.start < thi]
+                going = [note for note in notes if note.start < tlo and note.stop >= thi]
+
+                for note in going:
+                    chars[note.note.pitch - min_pitch] = " | "
+                for note in start:
+                    chars[note.note.pitch - min_pitch] = " x "
+                print("".join(chars), file=stream)
 
         else:
             raise NotImplementedError
 
 
 names_flat = (
-    ["", "Bb0", "", "", ]
-    + ["Db1", "", "Eb1", "", "", "Gb1", "", "Ab1", "", "Bb1", "", ""]
-    + ["Db2", "", "Eb2", "", "", "Gb2", "", "Ab2", "", "Bb2", "", ""]
-    + ["Db3", "", "Eb3", "", "", "Gb3", "", "Ab3", "", "Bb3", "", ""]
-    + ["Db4", "", "Eb4", "", "", "Gb4", "", "Ab4", "", "Bb4", "", ""]
-    + ["Db5", "", "Eb5", "", "", "Gb5", "", "Ab5", "", "Bb5", "", ""]
-    + ["Db6", "", "Eb6", "", "", "Gb6", "", "Ab6", "", "Bb6", "", ""]
-    + ["Db7", "", "Eb7", "", "", "Gb7", "", "Ab7", "", "Bb7", "", ""]
-    + ["Db8", "", "Eb8", "", "", "Gb8", "", "Ab8", "", "Bb8", "", ""]
-    + ["Db9", "", "Eb9", "", "", "Gb9", ""]
+    ["", "Bb0", "", ""]
+    + ["Db", "", "Eb", "", "", "Gb", "", "Ab", "", "Bb", "", ""]
+    + ["Db", "", "Eb", "", "", "Gb", "", "Ab", "", "Bb", "", ""]
+    + ["Db", "", "Eb", "", "", "Gb", "", "Ab", "", "Bb", "", ""]
+    + ["Db", "", "Eb", "", "", "Gb", "", "Ab", "", "Bb", "", ""]
+    + ["Db", "", "Eb", "", "", "Gb", "", "Ab", "", "Bb", "", ""]
+    + ["Db", "", "Eb", "", "", "Gb", "", "Ab", "", "Bb", "", ""]
+    + ["Db", "", "Eb", "", "", "Gb", "", "Ab", "", "Bb", "", ""]
+    + ["Db", "", "Eb", "", "", "Gb", "", "Ab", "", "Bb", "", ""]
+    + ["Db", "", "Eb", "", "", "Gb", ""]
 )
 
 names_sharp = (
-    ["A0", "A#0", "B0"]
-    + ["C1", "C#1", "D1", "D#1", "E1", "F1", "F#1", "G1", "G#1", "A1", "A#1", "B1"]
-    + ["C2", "C#2", "D2", "D#2", "E2", "F2", "F#2", "G2", "G#2", "A2", "A#2", "B2"]
-    + ["C3", "C#3", "D3", "D#3", "E3", "F3", "F#3", "G3", "G#3", "A3", "A#3", "B3"]
-    + ["C4", "C#4", "D4", "D#4", "E4", "F4", "F#4", "G4", "G#4", "A4", "A#4", "B4"]
-    + ["C5", "C#5", "D5", "D#5", "E5", "F5", "F#5", "G5", "G#5", "A5", "A#5", "B5"]
-    + ["C6", "C#6", "D6", "D#6", "E6", "F6", "F#6", "G6", "G#6", "A6", "A#6", "B6"]
-    + ["C7", "C#7", "D7", "D#7", "E7", "F7", "F#7", "G7", "G#7", "A7", "A#7", "B7"]
-    + ["C8", "C#8", "D8", "D#8", "E8", "F8", "F#8", "G8", "G#8", "A8", "A#8", "B8"]
-    + ["C9", "C#9", "D9", "D#9", "E9", "F9", "F#9", "G9"]
+    ["A0", "A#", "B0"]
+    + ["C1", "C#", "D1", "D#", "E1", "F1", "F#", "G1", "G#", "A1", "A#", "B1"]
+    + ["C2", "C#", "D2", "D#", "E2", "F2", "F#", "G2", "G#", "A2", "A#", "B2"]
+    + ["C3", "C#", "D3", "D#", "E3", "F3", "F#", "G3", "G#", "A3", "A#", "B3"]
+    + ["C4", "C#", "D4", "D#", "E4", "F4", "F#", "G4", "G#", "A4", "A#", "B4"]
+    + ["C5", "C#", "D5", "D#", "E5", "F5", "F#", "G5", "G#", "A5", "A#", "B5"]
+    + ["C6", "C#", "D6", "D#", "E6", "F6", "F#", "G6", "G#", "A6", "A#", "B6"]
+    + ["C7", "C#", "D7", "D#", "E7", "F7", "F#", "G7", "G#", "A7", "A#", "B7"]
+    + ["C8", "C#", "D8", "D#", "E8", "F8", "F#", "G8", "G#", "A8", "A#", "B8"]
+    + ["C9", "C#", "D9", "D#", "E9", "F9", "F#", "G9"]
 )
 
 notes: Dict[str, MIDINote] = {}
