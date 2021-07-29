@@ -3,11 +3,9 @@
 import ctypes
 import ctypes.util
 import pkg_resources
-from typing import List
+from typing import List, Tuple, Optional
 
-import numpy
-
-import doremi.concrete
+import numpy as np
 
 
 fluidsynth_name = (
@@ -76,6 +74,20 @@ fluid_synth_noteoff.argtypes = [
 ]
 fluid_synth_noteoff.restype = ctypes.c_int
 
+# https://www.fluidsynth.org/api/group__audio__rendering.html#ga6b88528d1ea6322582314197488afab7
+fluid_synth_write_s16 = fluidsynth.fluid_synth_write_s16
+fluid_synth_write_s16.argtypes = [
+    ctypes.c_void_p,  # synth
+    ctypes.c_int,  # length: Count of audio frames to synthesize
+    ctypes.c_void_p,  # lbuf: Array of 16 bit words to store left channel of audio
+    ctypes.c_int,  # loff: Offset index in 'lout' for first sample
+    ctypes.c_int,  # lincr: Increment between samples stored to 'lout'
+    ctypes.c_void_p,  # rbuf: Array of 16 bit words to store right channel of audio
+    ctypes.c_int,  # roff: Offset index in 'rout' for first sample
+    ctypes.c_int,  # rincr: Increment between samples stored to 'rout'
+]
+fluid_synth_write_s16.restype = ctypes.c_void_p
+
 # https://www.fluidsynth.org/api/group__audio__rendering.html#ga7db368da2d74a73d05feaff4a6bb1da4
 fluid_synth_write_float = fluidsynth.fluid_synth_write_float
 fluid_synth_write_float.argtypes = [
@@ -90,41 +102,80 @@ fluid_synth_write_float.argtypes = [
 ]
 fluid_synth_write_float.restype = ctypes.c_void_p
 
+delete_fluid_settings = fluidsynth.delete_fluid_settings
+delete_fluid_settings.argtypes = [ctypes.c_void_p]
+delete_fluid_settings.restype = None
+
+delete_fluid_synth = fluidsynth.delete_fluid_synth
+delete_fluid_synth.argtypes = [ctypes.c_void_p]
+delete_fluid_synth.restype = None
+
 
 class Fluidsynth:
-    def __init__(self):
-        self.sample_rate = 44100
+    def __init__(
+        self,
+        soundfont: Optional[str] = None,
+        sample_rate: int = 44100,
+        dtype: object = "i2",
+    ):
+        self.sample_rate = sample_rate
+        self.dtype = np.dtype(dtype)
+        if self.dtype != np.dtype(np.int16) and self.dtype != np.dtype(np.float32):
+            raise TypeError(
+                'only dtype = np.int16 ("i2") or np.float32 ("f4") are allowed'
+            )
 
         self.settings = new_fluid_settings()
         fluid_settings_setnum(self.settings, b"synth.gain", 0.2)
-        fluid_settings_setnum(self.settings, b"synth.sample-rate", self.rate)
+        fluid_settings_setnum(self.settings, b"synth.sample-rate", self.sample_rate)
         fluid_settings_setint(self.settings, b"synth.midi-channels", 256)
 
         self.synthesizer = new_fluid_synth(self.settings)
 
-        filename = pkg_resources.resource_filename(
-            "doremi", "data/Nice-Steinway-Lite-v3.0.sf2"
-        )
-        self.soundfont = fluid_synth_sfload(self.synthesizer, filename.encode(), 0)
+        if soundfont is None:
+            soundfont = pkg_resources.resource_filename(
+                "doremi", "data/Nice-Steinway-Lite-v3.0.sf2"
+            )
+        self.soundfont = fluid_synth_sfload(self.synthesizer, soundfont.encode(), 0)
+        if self.soundfont == -1:
+            raise FileNotFoundError(f"could not open file named {repr(soundfont)}")
 
         fluid_synth_program_select(self.synthesizer, 0, self.soundfont, 0, 0)
 
-        self.cache = {}
-
-    def __del__(self):
+    def delete(self):
         delete_fluid_synth(self.synthesizer)
         delete_fluid_settings(self.settings)
 
-    # def synthesize_midi(self, pitch: int, seconds: float) -> np.ndarray:
-    #     key = ("M", pitch, seconds)
-    #     if key not in self.cache:
-    #         fluid_synth_noteon(self.synthesizer, 0, pitch, 127)
+    def midi_synthesize(
+        self, events: List[Tuple[float, List[Tuple[int, int]]]]
+    ) -> np.ndarray:
+        num_seconds = events[-1][0]
+        num_samples = int(self.sample_rate * num_seconds)
+        array = np.zeros((num_samples, 2), self.dtype)
 
-    #         samples = int(self.sample_rate * seconds)
-    #         buf = ctypes.create_string_buffer(samples * np.float.itemsize)
-    #         fluid_synth_write_float(self.synthesizer, samples, buf, 0, 2, buf, 1, 2)
-    #         self.cache[key] = np.frombuffer(buf, dtype=np.float)
+        if self.dtype == np.dtype(np.int16):
+            function = fluid_synth_write_s16
+        elif self.dtype == np.dtype(np.float32):
+            function = fluid_synth_write_float
+        else:
+            raise AssertionError(repr(self.dtype))
 
-    #         fluid_synth_noteoff(self.synthesizer, 0, pitch)
+        last_time = 0.0
+        for this_time, changes in events:
+            last_index = int(self.sample_rate * last_time)
+            this_index = int(self.sample_rate * this_time)
 
-    #     return self.cache[key]
+            if last_index != this_index:
+                section = array[last_index:this_index]
+                buf = section.ctypes.data_as(ctypes.c_void_p)
+                function(self.synthesizer, len(section), buf, 0, 2, buf, 1, 2)
+
+            for p, v in changes:
+                if v == 0:
+                    fluid_synth_noteoff(self.synthesizer, 0, p)
+                else:
+                    fluid_synth_noteon(self.synthesizer, 0, p, v)
+
+            last_time = this_time
+
+        return array

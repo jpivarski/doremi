@@ -264,6 +264,94 @@ class Composition:
 
         return notes
 
+    def midi_events(
+        self,
+        scale: Optional[AnyScale] = None,
+        bpm: Optional[float] = None,
+    ) -> List[Tuple[float, List[Tuple[int, int]]]]:
+
+        notes = self.notes(scale, bpm)
+        if not all(isinstance(note.note, MIDINote) for note in notes):
+            raise ValueError(
+                "midi_events can only be called if all notes are MIDINotes"
+            )
+        notes.sort(key=lambda note: note.start)
+
+        events = []
+        state = [0.0] * 128
+        i = 0
+        while i < len(notes):
+            start = notes[i].start
+            same_start = []
+            while i < len(notes) and notes[i].start == start:
+                same_start.append(notes[i])
+                i += 1
+
+            to_stop = [
+                (stop, pitch)
+                for pitch, stop in enumerate(state)
+                if stop != 0.0 and stop <= start
+            ]
+            to_stop.sort()
+            last_stop = None
+            for stop, pitch in to_stop:
+                if last_stop != stop:
+                    events.append((stop, []))
+                events[-1][1].append((pitch, 0))  # turn note off
+                state[pitch] = 0.0
+                last_stop = stop
+
+            changes = []
+            for note in same_start:
+                pitch = note.note.pitch
+                if state[pitch] == 0.0:
+                    changes.append((pitch, 127))  # turn note on
+                    state[pitch] = note.stop
+                else:
+                    changes.append((pitch, 0))  # turn it off just before
+                    changes.append((pitch, 127))  # turning it on again
+                    if state[pitch] < note.stop:
+                        state[pitch] = note.stop  # longest note wins
+
+            if len(events) != 0 and events[-1][0] == start:
+                events[-1][1].extend(changes)
+            else:
+                events.append((start, changes))
+
+        to_stop = [(stop, pitch) for pitch, stop in enumerate(state) if stop != 0.0]
+        to_stop.sort()
+
+        last_stop = None
+        for stop, pitch in to_stop:
+            if last_stop != stop:
+                events.append((stop, []))
+            events[-1][1].append((pitch, 0))  # turn note off
+            state[pitch] = 0.0
+            last_stop = stop
+
+        return events
+
+    def fluidsynth(
+        self,
+        scale: Optional[AnyScale] = None,
+        bpm: Optional[float] = None,
+        soundfont: Optional[str] = None,
+        sample_rate: int = 44100,
+        dtype: object = "i2",
+    ):
+        import doremi.synthesizer
+
+        events = self.midi_events(scale, bpm)
+
+        fluidsynth = doremi.synthesizer.Fluidsynth(soundfont, sample_rate, dtype)
+
+        try:
+            array = fluidsynth.midi_synthesize(events)
+        finally:
+            fluidsynth.delete()
+
+        return array
+
     def show_notes(
         self,
         lines_per_beat: float = 1.0,
