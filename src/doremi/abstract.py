@@ -309,7 +309,9 @@ class Collection(AST):
     )
     source: Optional[str] = field(default=None, repr=False, compare=False, hash=False)
 
-    def evaluate(self, scope: Optional[Scope]) -> Tuple[float, List[AbstractNote], Scope]:
+    def evaluate(
+        self, scope: Optional[Scope]
+    ) -> Tuple[float, List[AbstractNote], Scope]:
         if scope is None:
             scope = Scope({})
         unnamed_passages: List[UnnamedPassage] = []
@@ -319,7 +321,12 @@ class Collection(AST):
             else:
                 unnamed_passages.append(passage)
 
-        duration, notes = evaluate(unnamed_passages, scope, 0, (), ())
+        try:
+            duration, notes = evaluate(unnamed_passages, scope, 0, (), ())
+        except DoremiError as err:
+            err.context = self.source
+            raise
+
         return duration, notes, scope
 
 
@@ -346,6 +353,8 @@ def get_comments(
     else:
         if node.type == "BLANK" or node.type == "BLANK_END":
             yield node
+        elif node.type == "OCTAVE_DOWNS":
+            raise SymbolStartsWithV(node)
         else:
             raise AssertionError(repr(node))
 
@@ -374,6 +383,9 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
 
             subnode1 = node.children[0]
             assert isinstance(subnode1, lark.lexer.Token) and subnode1.type == "WORD"
+            if is_rest(subnode1):
+                raise SymbolAllUnderscores(subnode1)
+
             function = Word(subnode1)
 
             if len(node.children) == 2:
@@ -406,15 +418,31 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                 absolute = 0
 
             if node.children[index].data == "octave":
-                subnode = node.children[index].children[0].children
-                assert all(isinstance(x, lark.lexer.Token) for x in subnode)
-                if subnode[0].type == "INT":
-                    octave = int(subnode[0])
+                subnodes = node.children[index].children[0].children
+
+                if len(subnodes) == 1:
+                    assert isinstance(subnodes[0], lark.lexer.Token)
+                    if subnodes[0].type == "OCTAVE_UPS":
+                        octave = len(subnodes[0])
+                    elif subnodes[0].type == "OCTAVE_DOWNS":
+                        octave = -len(subnodes[0])
+                    else:
+                        raise AssertionError(repr(subnodes[0]))
+                elif len(subnodes) == 2:
+                    assert isinstance(subnodes[0], lark.lexer.Token)
+                    assert isinstance(subnodes[1], lark.lexer.Token)
+                    assert subnodes[0].type == "INT"
+                    if subnodes[1].type == "OCTAVE_UP":
+                        octave = int(subnodes[0])
+                    elif subnodes[1].type == "OCTAVE_DOWN":
+                        octave = -int(subnodes[0])
+                    else:
+                        raise AssertionError(repr(subnodes[1]))
                 else:
-                    octave = len(subnode)
-                if subnode[-1].type == "DEGREE_DOWN":
-                    octave *= -1
+                    raise AssertionError(len(subnodes))
+
                 index += 1
+
             else:
                 octave = 0
 
@@ -478,15 +506,27 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                 subnode = node.children[index].children[0]
 
                 if subnode.data == "upward_step" or subnode.data == "downward_step":
-                    assert all(
-                        isinstance(x, lark.lexer.Token) for x in subnode.children
-                    )
-                    if subnode.children[-1].type == "INT":
-                        amount = int(subnode.children[-1])
+                    subnodes = subnode.children
+                    if len(subnodes) == 1:
+                        assert isinstance(subnodes[0], lark.lexer.Token)
+                        if subnodes[0].type == "STEP_UPS":
+                            amount = len(subnodes[0])
+                        elif subnodes[0].type == "STEP_DOWNS":
+                            amount = -len(subnodes[0])
+                        else:
+                            raise AssertionError(repr(subnodes[0]))
+                    elif len(subnodes) == 2:
+                        assert isinstance(subnodes[0], lark.lexer.Token)
+                        assert isinstance(subnodes[1], lark.lexer.Token)
+                        assert subnodes[1].type == "INT"
+                        if subnodes[0].type == "STEP_UP":
+                            amount = int(subnodes[1])
+                        elif subnodes[0].type == "STEP_DOWN":
+                            amount = -int(subnodes[1])
+                        else:
+                            raise AssertionError(repr(subnodes[0]))
                     else:
-                        amount = len(subnode.children)
-                    if subnode.children[0].type == "STEP_DOWN":
-                        amount *= -1
+                        raise AssertionError(len(subnodes))
 
                     if amount == 0:
                         augmentation = None
@@ -496,15 +536,27 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                 elif (
                     subnode.data == "upward_degree" or subnode.data == "downward_degree"
                 ):
-                    assert all(
-                        isinstance(x, lark.lexer.Token) for x in subnode.children
-                    )
-                    if subnode.children[-1].type == "INT":
-                        amount = int(subnode.children[-1])
+                    subnodes = subnode.children
+                    if len(subnodes) == 1:
+                        assert isinstance(subnodes[0], lark.lexer.Token)
+                        if subnodes[0].type == "DEGREE_UPS":
+                            amount = len(subnodes[0])
+                        elif subnodes[0].type == "DEGREE_DOWNS":
+                            amount = -len(subnodes[0])
+                        else:
+                            raise AssertionError(repr(subnodes[0]))
+                    elif len(subnodes) == 2:
+                        assert isinstance(subnodes[0], lark.lexer.Token)
+                        assert isinstance(subnodes[1], lark.lexer.Token)
+                        assert subnodes[1].type == "INT"
+                        if subnodes[0].type == "DEGREE_UP":
+                            amount = int(subnodes[1])
+                        elif subnodes[0].type == "DEGREE_DOWN":
+                            amount = -int(subnodes[1])
+                        else:
+                            raise AssertionError(repr(subnodes[0]))
                     else:
-                        amount = len(subnode.children)
-                    if subnode.children[0].type == "DEGREE_DOWN":
-                        amount *= -1
+                        raise AssertionError(len(subnodes))
 
                     if amount == 0:
                         augmentation = None
@@ -552,13 +604,25 @@ def abstracttree(source: str) -> AST:
     parsingtree = doremi.parsing.parsingtree(source)
     assert parsingtree.data == "start"
 
-    comments = list(get_comments(parsingtree))
+    try:
+        comments = list(get_comments(parsingtree))
+    except DoremiError as err:
+        err.context = source
+        raise
+
     for i, x in enumerate(comments):
         assert i + 1 == x.line, [x.line for x in comments]
 
-    passages = [
-        to_ast(x) for x in parsingtree.children if not isinstance(x, lark.lexer.Token)
-    ]
+    try:
+        passages = [
+            to_ast(x)
+            for x in parsingtree.children
+            if not isinstance(x, lark.lexer.Token)
+        ]
+    except DoremiError as err:
+        err.context = source
+        raise
+
     return Collection(passages, comments, parsingtree, source)
 
 
@@ -568,7 +632,7 @@ class DoremiError(Exception):
     context: Optional[str]
 
     def __str__(self) -> str:
-        out = f"{self.error_message} (on line {self.node.line})"
+        out = f"{self.error_message} on line {self.node.line}"
 
         if self.context is None:
             return out
@@ -581,6 +645,20 @@ class DoremiError(Exception):
     {"-" * (self.node.column - 1) + "^"}"""
 
 
+class SymbolAllUnderscores(DoremiError):
+    def __init__(self, node: lark.tree.Tree):
+        self.error_message = "symbols must not consist entirely of underscores (rest)"
+        self.node = node
+        self.context = None
+
+
+class SymbolStartsWithV(DoremiError):
+    def __init__(self, node: lark.tree.Tree):
+        self.error_message = "symbols must not start with the letter 'v' (octave down)"
+        self.node = node
+        self.context = None
+
+
 class RecursiveFunction(DoremiError):
     def __init__(self, node: lark.tree.Tree):
         self.error_message = f"function (indirectly?) calls itself: {str(node)!r}"
@@ -590,13 +668,15 @@ class RecursiveFunction(DoremiError):
 
 class UndefinedSymbol(DoremiError):
     def __init__(self, node: lark.lexer.Token):
-        self.error_message = f"symbol has not been defined (yet?): {str(node)!r}"
+        self.error_message = (
+            f"symbol has not been defined (misspelling?): {str(node)!r}"
+        )
         self.node = node
         self.context = None
 
 
 class MismatchingArguments(DoremiError):
     def __init__(self, node: lark.tree.Tree):
-        self.error_message = "wrong number of arguments"
+        self.error_message = "wrong number of arguments in function call"
         self.node = node
         self.context = None

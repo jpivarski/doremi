@@ -22,15 +22,14 @@ class Note:
 
 @dataclass
 class RealNote(Note):
-    pitch: float  # Hz
-
-    @property
-    def frequency(self) -> float:
-        return self.pitch
+    frequency: float  # Hz
 
     def same_pitch_class(self, other: Note) -> bool:
         ratio = self.frequency / other.frequency
         return 2 ** math.log2(ratio) == ratio
+
+    def with_octave(self, octave: int) -> Note:
+        return RealNote(self.frequency * (2 ** octave))
 
 
 @dataclass
@@ -49,12 +48,19 @@ class MIDINote(Note):
             ratio = self.frequency / other.frequency
             return 2 ** math.log2(ratio) == ratio
 
+    def with_octave(self, octave: int) -> Note:
+        out = MIDINote(self.pitch + (12 * octave))
+        if 0 <= out.pitch < 128:
+            return out
+        else:
+            return RealNote(out.frequency)
+
 
 @dataclass
 class TimedNote:
     note: Note
-    start: float   # real time in seconds
-    stop: float   # real time in seconds
+    start: float  # real time in seconds
+    stop: float  # real time in seconds
 
 
 @dataclass
@@ -149,19 +155,25 @@ class Composition:
 
         notes = []
         for abstract_note in self.abstract_notes:
-            note = self.scale[abstract_note.word.val]
+            try:
+                note = self.scale[abstract_note.word.val]
+            except doremi.abstract.DoremiError as err:
+                err.context = self.abstract_collection.source
+                raise
 
             if abstract_note.octave != 0:
                 note = note.with_octave(abstract_note.octave)
 
             if len(abstract_note.augmentations) != 0:
-                note = note.with_augmentations(abstract_note.augmentations)
+                note = note.with_augmentations(abstract_note.augmentations, self.scale)
 
-            notes.append(TimedNote(
-                note,
-                abstract_note.start * beat_in_seconds,
-                abstract_note.stop * beat_in_seconds,
-            ))
+            notes.append(
+                TimedNote(
+                    note,
+                    abstract_note.start * beat_in_seconds,
+                    abstract_note.stop * beat_in_seconds,
+                )
+            )
 
         return notes
 
@@ -284,7 +296,9 @@ def make_scale(source: MakeScale, name: Optional[str] = None) -> Scale:
     included_notes: List[Tuple[str, Note]] = []
     for k, v in source.items():
         if doremi.abstract.is_rest(k):
-            raise ValueError("names with all underscores are reserved for rests")
+            raise ValueError("symbols must not consist entirely of underscores (rest)")
+        elif k.startswith("v"):
+            raise ValueError("symbols must not start with the letter 'v' (octave down)")
 
         if isinstance(v, numbers.Real):
             if v <= 0:

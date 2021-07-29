@@ -6,7 +6,7 @@ import lark
 grammar = r"""
 start: BLANK* assign_passage (BLANK BLANK+ assign_passage)* BLANK_END*
 
-assign_passage: assign "=" BLANK? passage | passage
+assign_passage: OCTAVE_DOWNS? assign "=" BLANK? passage | passage
 assign: WORD | WORD "(" defargs? ")"
 defargs: WORD ("," WORD)*
 passage: line (BLANK line)*
@@ -17,14 +17,14 @@ modified: absolute? octave? expression augmentation? duration? repetition?
 absolute: ABSOLUTE+
 
 octave: upward_octave | downward_octave
-upward_octave: (DEGREE_UP* | INT) DEGREE_UP
-downward_octave: (DEGREE_DOWN* | INT) DEGREE_DOWN
+upward_octave: INT OCTAVE_UP | OCTAVE_UPS
+downward_octave: INT OCTAVE_DOWN | OCTAVE_DOWNS
 
 augmentation: upward_step | downward_step | upward_degree | downward_degree | ratio_tune
-upward_step: STEP_UP (STEP_UP* | INT)
-downward_step: STEP_DOWN (STEP_DOWN* | INT)
-upward_degree: DEGREE_UP (DEGREE_UP* | INT)
-downward_degree: DEGREE_DOWN (DEGREE_DOWN* | INT)
+upward_step: STEP_UPS | STEP_UP INT
+downward_step: STEP_DOWNS | STEP_DOWN INT
+upward_degree: DEGREE_UPS | DEGREE_UP INT
+downward_degree: DEGREE_DOWNS | DEGREE_DOWN INT
 ratio_tune: "*" ratio
 
 duration: dot_duration | ratio_duration
@@ -37,20 +37,30 @@ ratio: POSITIVE_INT ("/" POSITIVE_INT)?
 expression: WORD | WORD "(" args? ")" | "{" modified+ "}"
 args: line ("," line)*
 
-INT: /(0|[1-9][0-9]*)/
-POSITIVE_INT: /[1-9][0-9]*/
-WORD: /[\p{L}_][\p{L}_#0-9]*/
+OCTAVE_UP: "^"
+OCTAVE_UPS: /\^+/
+OCTAVE_DOWN: "v"
+OCTAVE_DOWNS: /v+/
 STEP_UP: "+"
+STEP_UPS: /\++/
 STEP_DOWN: "-"
+STEP_DOWNS: /-+/
 DEGREE_UP: ">"
+DEGREE_UPS: />+/
 DEGREE_DOWN: "<"
+DEGREE_DOWNS: /<+/
 ABSOLUTE: "@"
 DOT: "."
+
+INT: /(0|[1-9][0-9]*)/
+POSITIVE_INT: /[1-9][0-9]*/
+WORD: /(?!v)[\p{L}_][\p{L}_#0-9]*/
+
+WS: /[ \t]/+
 BLANK: /(\n|\|[^\n]*\n)/
 BLANK_END: /(\n|\|[^\n]*\n|\|[^\n]*)/
 
-%import common.WS_INLINE
-%ignore WS_INLINE
+%ignore WS
 """
 
 

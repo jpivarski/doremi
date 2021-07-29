@@ -25,5 +25,4 @@ def compose(
     )
 
 
-__all__ = (
-    "__version__", "compose")
+__all__ = ("__version__", "compose")
