@@ -2,11 +2,12 @@
 
 import ctypes
 import ctypes.util
-import threading
 import pkg_resources
 from typing import List
 
 import numpy
+
+import doremi.concrete
 
 
 fluidsynth_name = (
@@ -92,8 +93,6 @@ fluid_synth_write_float.restype = ctypes.c_void_p
 
 class Fluidsynth:
     def __init__(self):
-        self.lock = threading.Lock()
-
         self.sample_rate = 44100
 
         self.settings = new_fluid_settings()
@@ -116,17 +115,16 @@ class Fluidsynth:
         delete_fluid_synth(self.synthesizer)
         delete_fluid_settings(self.settings)
 
-    def synthesize_midi(self, pitch: int, seconds: float) -> np.ndarray:
-        key = ("M", pitch, seconds)
-        if key not in self.cache:
-            with self.lock:
-                fluid_synth_noteon(self.synthesizer, 0, pitch, 127)
+    # def synthesize_midi(self, pitch: int, seconds: float) -> np.ndarray:
+    #     key = ("M", pitch, seconds)
+    #     if key not in self.cache:
+    #         fluid_synth_noteon(self.synthesizer, 0, pitch, 127)
 
-                samples = int(self.sample_rate * seconds)
-                buf = ctypes.create_string_buffer(samples * np.float.itemsize)
-                fluid_synth_write_float(self.synthesizer, samples, buf, 0, 2, buf, 1, 2)
-                self.cache[key] = np.frombuffer(buf, dtype=np.float)
+    #         samples = int(self.sample_rate * seconds)
+    #         buf = ctypes.create_string_buffer(samples * np.float.itemsize)
+    #         fluid_synth_write_float(self.synthesizer, samples, buf, 0, 2, buf, 1, 2)
+    #         self.cache[key] = np.frombuffer(buf, dtype=np.float)
 
-                fluid_synth_noteoff(self.synthesizer, 0, pitch)
+    #         fluid_synth_noteoff(self.synthesizer, 0, pitch)
 
-        return self.cache[key]
+    #     return self.cache[key]

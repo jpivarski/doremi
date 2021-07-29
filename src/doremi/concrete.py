@@ -223,14 +223,26 @@ class Composition:
     def duration_in_seconds(self) -> float:
         return self.num_beats * self.beat_in_seconds
 
-    @property
-    def notes(self) -> List[TimedNote]:
-        beat_in_seconds = self.beat_in_seconds
+    def notes(
+        self,
+        scale: Optional[AnyScale] = None,
+        bpm: Optional[float] = None,
+    ) -> List[TimedNote]:
+
+        if scale is None:
+            scale = self.scale
+        else:
+            scale = doremi.concrete.get_scale(scale)
+
+        if bpm is None:
+            bpm = self.bpm
+
+        beat_in_seconds = 60.0 / bpm
 
         notes = []
         for abstract_note in self.abstract_notes:
             try:
-                note = self.scale[abstract_note.word.val]
+                note = scale[abstract_note.word.val]
             except doremi.abstract.DoremiError as err:
                 err.context = self.abstract_collection.source
                 raise
@@ -240,7 +252,7 @@ class Composition:
 
             if len(abstract_note.augmentations) != 0:
                 for augmentation in abstract_note.augmentations[::-1]:
-                    note = note.with_augmentation(augmentation, self.scale)
+                    note = note.with_augmentation(augmentation, scale)
 
             notes.append(
                 TimedNote(
@@ -252,13 +264,20 @@ class Composition:
 
         return notes
 
-    def show_notes(self, stream: TextIO = sys.stdout):
-        notes = self.notes
+    def show_notes(
+        self,
+        lines_per_beat: float = 1.0,
+        stream: TextIO = sys.stdout,
+        scale: Optional[AnyScale] = None,
+        bpm: Optional[float] = None,
+    ):
+        if bpm is None:
+            bpm = self.bpm
+        notes = self.notes(scale, bpm)
 
         if all(isinstance(note.note, MIDINote) for note in notes):
             min_pitch = min(note.note.pitch for note in notes) - 2
             max_pitch = max(note.note.pitch for note in notes) + 3
-            min_duration = min(note.duration for note in notes)
 
             if min_pitch < 21 or max_pitch > 127:
                 raise NotImplementedError
@@ -276,11 +295,13 @@ class Composition:
                 file=stream,
             )
 
-            num_timesteps = int(math.ceil(self.duration_in_seconds / min_duration))
+            num_timesteps = int(math.ceil(self.num_beats * lines_per_beat))
+            scale_factor = 60.0 / bpm
+
             for timestep in range(num_timesteps):
                 chars = ["   " for i in range(max_pitch - min_pitch)]
 
-                tlo, thi = timestep * min_duration, (timestep + 1) * min_duration
+                tlo, thi = timestep * scale_factor, (timestep + 1) * scale_factor
                 start = [note for note in notes if tlo <= note.start < thi]
                 going = [
                     note for note in notes if note.start < tlo and note.stop >= thi
