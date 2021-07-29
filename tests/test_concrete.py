@@ -11,14 +11,14 @@ def test_show_notes():
 
 
 def test_augmentation():
-    assert doremi.compose("do").notes()[0].note.pitch == 60
+    assert doremi.compose("do'", "C major").notes()[0].note.pitch == 60
 
-    assert doremi.compose("do+").notes()[0].note.pitch == 61
-    assert doremi.compose("do++").notes()[0].note.pitch == 62
-    assert doremi.compose("do+3").notes()[0].note.pitch == 63
-    assert doremi.compose("do-").notes()[0].note.pitch == 59
-    assert doremi.compose("do--").notes()[0].note.pitch == 58
-    assert doremi.compose("do-3").notes()[0].note.pitch == 57
+    assert doremi.compose("do'+", "C major").notes()[0].note.pitch == 61
+    assert doremi.compose("do'++", "C major").notes()[0].note.pitch == 62
+    assert doremi.compose("do'+3", "C major").notes()[0].note.pitch == 63
+    assert doremi.compose("do'-", "C major").notes()[0].note.pitch == 59
+    assert doremi.compose("do'--", "C major").notes()[0].note.pitch == 58
+    assert doremi.compose("do'-3", "C major").notes()[0].note.pitch == 57
 
     assert doremi.compose("do>").notes()[0].note == doremi.compose("re").notes()[0].note
     assert (
@@ -71,7 +71,7 @@ def test_augmentation():
     assert (
         doremi.compose("do'>8").notes()[0].note
         == doremi.compose("re''").notes()[0].note
-        )
+    )
     assert (
         doremi.compose("do'>9").notes()[0].note
         == doremi.compose("mi''").notes()[0].note

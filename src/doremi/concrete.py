@@ -616,7 +616,7 @@ def named_scale(name: str, accidentals: bool = True) -> Scale:
                 mode = "aeolian"
 
             try:
-                base_pitch = notes[tonic[0] + accidental + "4"].pitch
+                base_pitch = notes[tonic[0] + accidental + "3"].pitch
             except KeyError:
                 raise ValueError(
                     f"unrecognized note name: {tonic[0].capitalize() + accidental}"
