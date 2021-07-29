@@ -12,10 +12,10 @@ defargs: WORD+
 passage: line (BLANK line)*
 
 line: modified+
-modified: absolute? expression octave? augmentation? duration? repetition?
+modified: emphasis? absolute? expression octave? augmentation? duration? repetition?
 
+emphasis: EMPHASIS+
 absolute: ABSOLUTE+
-
 octave: upward_octave | downward_octave
 upward_octave: OCTAVE_UP INT | OCTAVE_UPS
 downward_octave: OCTAVE_DOWN INT | OCTAVE_DOWNS
@@ -37,6 +37,8 @@ ratio: POSITIVE_INT ("/" POSITIVE_INT)?
 expression: WORD | WORD "(" args? ")" | "{" modified+ "}"
 args: modified+
 
+EMPHASIS: "!"
+ABSOLUTE: "@"
 OCTAVE_UP: "'"
 OCTAVE_UPS: /\'+/
 OCTAVE_DOWN: ","
@@ -49,12 +51,11 @@ DEGREE_UP: ">"
 DEGREE_UPS: />+/
 DEGREE_DOWN: "<"
 DEGREE_DOWNS: /<+/
-ABSOLUTE: "@"
 DOT: "."
 
 INT: /(0|[1-9][0-9]*)/
 POSITIVE_INT: /[1-9][0-9]*/
-WORD: /(?!v)[\p{L}_#][\p{L}_#0-9]*/
+WORD: /[\p{L}_#][\p{L}_#0-9]*/
 
 WS: /[ \t]/+
 BLANK: /(\n|\|[^\n]*\n)/

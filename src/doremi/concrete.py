@@ -131,6 +131,7 @@ class TimedNote:
     note: Note
     start: float  # real time in seconds
     stop: float  # real time in seconds
+    emphasis: float  # 1.0 for maximum emphasis; no notes are at 0.0
 
     @property
     def duration(self):
@@ -239,6 +240,8 @@ class Composition:
 
         beat_in_seconds = 60.0 / bpm
 
+        max_emphasis = float(max(x.emphasis + 1 for x in self.abstract_notes))
+
         notes = []
         for abstract_note in self.abstract_notes:
             try:
@@ -259,6 +262,7 @@ class Composition:
                     note,
                     abstract_note.start * beat_in_seconds,
                     abstract_note.stop * beat_in_seconds,
+                    float(abstract_note.emphasis + 1) / max_emphasis,
                 )
             )
 
@@ -304,12 +308,13 @@ class Composition:
             changes = []
             for note in same_start:
                 pitch = note.note.pitch
+                emphasis = int(math.ceil(note.emphasis * 127))
                 if state[pitch] == 0.0:
-                    changes.append((pitch, 127))  # turn note on
+                    changes.append((pitch, emphasis))  # turn note on
                     state[pitch] = note.stop
                 else:
                     changes.append((pitch, 0))  # turn it off just before
-                    changes.append((pitch, 127))  # turning it on again
+                    changes.append((pitch, emphasis))  # turning it on again
                     if state[pitch] < note.stop:
                         state[pitch] = note.stop  # longest note wins
 

@@ -18,6 +18,7 @@ class AbstractNote:
     start: float
     stop: float
     word: "Word"
+    emphasis: int = field(default=0)
     octave: int = field(default=0)
     augmentations: Tuple["Augmentation"] = field(default=())
 
@@ -26,6 +27,7 @@ class AbstractNote:
             self.start,
             self.stop,
             self.word,
+            self.emphasis,
             self.octave,
             self.augmentations,
         )
@@ -132,6 +134,7 @@ class Duration(AST):
 @dataclass
 class Modified(AST):
     expression: Union[Expression, List[Expression]]
+    emphasis: int
     absolute: int
     octave: int
     augmentation: Augmentation
@@ -183,6 +186,7 @@ class UnnamedPassage(Passage):
 def evaluate(
     node: Union[list, Word, Call, Modified, Line, Passage],
     scope: Scope,
+    emphasis: int,
     octave: int,
     augmentations: Tuple[Augmentation],
     breadcrumbs: Tuple[str],
@@ -193,7 +197,7 @@ def evaluate(
         all_notes = []
         for subnode in node:
             duration, notes = evaluate(
-                subnode, scope, octave, augmentations, breadcrumbs
+                subnode, scope, emphasis, octave, augmentations, breadcrumbs
             )
             for note in notes:
                 note.inplace_shift(last_stop)
@@ -205,7 +209,9 @@ def evaluate(
 
     elif isinstance(node, Word):
         if scope.has(node.val):
-            return evaluate(Call(node, []), scope, octave, augmentations, breadcrumbs)
+            return evaluate(
+                Call(node, []), scope, emphasis, octave, augmentations, breadcrumbs
+            )
         elif is_rest(node.val):
             return float(len(node.val)), []
         else:
@@ -213,6 +219,7 @@ def evaluate(
                 0.0,
                 1.0,
                 node,
+                emphasis,
                 octave,
                 augmentations,
             )
@@ -239,7 +246,9 @@ def evaluate(
             scope,
         )
         breadcrumbs = breadcrumbs + (node.function.val,)
-        return evaluate(namedpassage, subscope, octave, augmentations, breadcrumbs)
+        return evaluate(
+            namedpassage, subscope, emphasis, octave, augmentations, breadcrumbs
+        )
 
     elif isinstance(node, Modified):
         if node.absolute > 0:
@@ -249,12 +258,22 @@ def evaluate(
 
         if isinstance(node.expression, Expression):
             natural_duration, notes = evaluate(
-                node.expression, scope, octave + node.octave, augmentations, breadcrumbs
+                node.expression,
+                scope,
+                emphasis + node.emphasis,
+                octave + node.octave,
+                augmentations,
+                breadcrumbs,
             )
 
         else:
             natural_duration, notes = evaluate(
-                node.expression, scope, octave + node.octave, augmentations, breadcrumbs
+                node.expression,
+                scope,
+                emphasis + node.emphasis,
+                octave + node.octave,
+                augmentations,
+                breadcrumbs,
             )
 
         if node.duration is not None:
@@ -280,13 +299,17 @@ def evaluate(
         return duration, notes
 
     elif isinstance(node, Line):
-        return evaluate(node.modified, scope, octave, augmentations, breadcrumbs)
+        return evaluate(
+            node.modified, scope, emphasis, octave, augmentations, breadcrumbs
+        )
 
     elif isinstance(node, Passage):
         max_duration = 0.0
         all_notes = []
         for line in node.lines:
-            duration, notes = evaluate(line, scope, octave, augmentations, breadcrumbs)
+            duration, notes = evaluate(
+                line, scope, emphasis, octave, augmentations, breadcrumbs
+            )
 
             all_notes.extend(notes)
             if max_duration < duration:
@@ -322,7 +345,7 @@ class Collection(AST):
                 unnamed_passages.append(passage)
 
         try:
-            duration, notes = evaluate(unnamed_passages, scope, 0, (), ())
+            duration, notes = evaluate(unnamed_passages, scope, 0, 0, (), ())
         except DoremiError as err:
             err.context = self.source
             raise
@@ -408,6 +431,12 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
             assert all(isinstance(x, lark.tree.Tree) for x in node.children)
             assert 1 <= len(node.children) <= 6
             index = 0
+
+            if node.children[index].data == "emphasis":
+                emphasis = len(node.children[index].children)
+                index += 1
+            else:
+                emphasis = 0
 
             if node.children[index].data == "absolute":
                 absolute = len(node.children[index].children)
@@ -585,7 +614,14 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                 octave = 0
 
             return Modified(
-                expression, absolute, octave, augmentation, duration, repetition, node
+                expression,
+                emphasis,
+                absolute,
+                octave,
+                augmentation,
+                duration,
+                repetition,
+                node,
             )
 
         raise AssertionError(repr(node))

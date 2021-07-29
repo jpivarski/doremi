@@ -157,3 +157,22 @@ def test_augmentation():
         doremi.compose("do * 1/4").notes()[0].note
         == doremi.compose("do,,").notes()[0].note
     )
+
+
+def test_emphasis():
+    notes = doremi.compose("do !do do").notes()
+    assert notes[0].emphasis == 1.0 / 2.0
+    assert notes[1].emphasis == 1.0
+    assert notes[2].emphasis == 1.0 / 2.0
+
+    notes = doremi.compose("do !!do do").notes()
+    assert notes[0].emphasis == 1.0 / 3.0
+    assert notes[1].emphasis == 1.0
+    assert notes[2].emphasis == 1.0 / 3.0
+
+    assert doremi.compose("do !do do").midi_events() == [
+        (0.0, [(48, 64)]),
+        (0.5, [(48, 0), (48, 127)]),
+        (1.0, [(48, 0), (48, 64)]),
+        (1.5, [(48, 0)]),
+    ]
