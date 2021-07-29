@@ -7,4 +7,6 @@ import doremi
 
 def test_compose():
     composition = doremi.compose("do ^do so")
-    print(composition.notes)
+    # composition.show_notes()
+
+    # raise Exception
