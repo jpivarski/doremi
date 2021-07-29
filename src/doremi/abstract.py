@@ -415,35 +415,6 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
             else:
                 absolute = 0
 
-            if node.children[index].data == "octave":
-                subnodes = node.children[index].children[0].children
-
-                if len(subnodes) == 1:
-                    assert isinstance(subnodes[0], lark.lexer.Token)
-                    if subnodes[0].type == "OCTAVE_UPS":
-                        octave = len(subnodes[0])
-                    elif subnodes[0].type == "OCTAVE_DOWNS":
-                        octave = -len(subnodes[0])
-                    else:
-                        raise AssertionError(repr(subnodes[0]))
-                elif len(subnodes) == 2:
-                    assert isinstance(subnodes[0], lark.lexer.Token)
-                    assert isinstance(subnodes[1], lark.lexer.Token)
-                    assert subnodes[0].type == "INT"
-                    if subnodes[1].type == "OCTAVE_UP":
-                        octave = int(subnodes[0])
-                    elif subnodes[1].type == "OCTAVE_DOWN":
-                        octave = -int(subnodes[0])
-                    else:
-                        raise AssertionError(repr(subnodes[1]))
-                else:
-                    raise AssertionError(len(subnodes))
-
-                index += 1
-
-            else:
-                octave = 0
-
             subnode = node.children[index]
             assert subnode.data == "expression"
 
@@ -583,6 +554,35 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
 
             else:
                 augmentation = None
+
+            if node.children[index].data == "octave":
+                subnodes = node.children[index].children[0].children
+
+                if len(subnodes) == 1:
+                    assert isinstance(subnodes[0], lark.lexer.Token)
+                    if subnodes[0].type == "OCTAVE_UPS":
+                        octave = len(subnodes[0])
+                    elif subnodes[0].type == "OCTAVE_DOWNS":
+                        octave = -len(subnodes[0])
+                    else:
+                        raise AssertionError(repr(subnodes[0]))
+                elif len(subnodes) == 2:
+                    assert isinstance(subnodes[0], lark.lexer.Token)
+                    assert isinstance(subnodes[1], lark.lexer.Token)
+                    assert subnodes[1].type == "INT"
+                    if subnodes[0].type == "OCTAVE_UP":
+                        octave = int(subnodes[1])
+                    elif subnodes[0].type == "OCTAVE_DOWN":
+                        octave = -int(subnodes[1])
+                    else:
+                        raise AssertionError(repr(subnodes[0]))
+                else:
+                    raise AssertionError(len(subnodes))
+
+                index -= 1
+
+            else:
+                octave = 0
 
             return Modified(
                 expression, absolute, octave, augmentation, duration, repetition, node

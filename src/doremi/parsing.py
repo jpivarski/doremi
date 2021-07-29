@@ -12,13 +12,13 @@ defargs: WORD+
 passage: line (BLANK line)*
 
 line: modified+
-modified: absolute? octave? expression augmentation? duration? repetition?
+modified: absolute? expression octave? augmentation? duration? repetition?
 
 absolute: ABSOLUTE+
 
 octave: upward_octave | downward_octave
-upward_octave: INT OCTAVE_UP | OCTAVE_UPS
-downward_octave: INT OCTAVE_DOWN | OCTAVE_DOWNS
+upward_octave: OCTAVE_UP INT | OCTAVE_UPS
+downward_octave: OCTAVE_DOWN INT | OCTAVE_DOWNS
 
 augmentation: upward_step | downward_step | upward_degree | downward_degree | ratio_tune
 upward_step: STEP_UPS | STEP_UP INT
