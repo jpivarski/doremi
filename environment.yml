@@ -1,0 +1,7 @@
+name: doremi
+channels:
+  - conda-forge
+dependencies:
+  - numpy
+  - fluidsynth
+  - lark-parser
