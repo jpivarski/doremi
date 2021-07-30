@@ -10,7 +10,7 @@ import sys
 from fractions import Fraction
 from dataclasses import dataclass, field
 from itertools import accumulate
-from typing import List, Set, Tuple, Dict, Mapping, Optional, Union, TextIO
+from typing import List, Set, Tuple, Dict, Mapping, Optional, Union, TextIO, Callable
 
 import lark
 
@@ -228,6 +228,9 @@ class Composition:
         self,
         scale: Optional[AnyScale] = None,
         bpm: Optional[float] = None,
+        emphasis_scaling: Callable[[int, int], float] = (
+            lambda single, maximum: (single + 1) / (maximum + 1)
+        ),
     ) -> List[TimedNote]:
 
         if scale is None:
@@ -240,7 +243,7 @@ class Composition:
 
         beat_in_seconds = 60.0 / bpm
 
-        max_emphasis = float(max(x.emphasis + 1 for x in self.abstract_notes))
+        max_emphasis = max(x.emphasis for x in self.abstract_notes)
 
         notes = []
         for abstract_note in self.abstract_notes:
@@ -262,7 +265,7 @@ class Composition:
                     note,
                     abstract_note.start * beat_in_seconds,
                     abstract_note.stop * beat_in_seconds,
-                    float(abstract_note.emphasis + 1) / max_emphasis,
+                    emphasis_scaling(abstract_note.emphasis, max_emphasis),
                 )
             )
 
