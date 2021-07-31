@@ -5,3 +5,4 @@ dependencies:
   - numpy
   - fluidsynth
   - lark-parser
+  - regex
