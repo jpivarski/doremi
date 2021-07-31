@@ -126,6 +126,7 @@ class AugmentRatio(Augmentation):
 @dataclass
 class Duration(AST):
     amount: Fraction
+    is_scaling: bool
     parsingtree: Optional[lark.tree.Tree] = field(
         default=None, repr=False, compare=False, hash=False
     )
@@ -277,10 +278,14 @@ def evaluate(
             )
 
         if node.duration is not None:
-            factor = float(node.duration.amount) / natural_duration
+            if node.duration.is_scaling:
+                factor = float(node.duration.amount)
+                natural_duration = natural_duration * factor
+            else:
+                factor = float(node.duration.amount) / natural_duration
+                natural_duration = float(node.duration.amount)
             for note in notes:
                 note.inplace_scale(factor)
-            natural_duration = float(node.duration.amount)
 
         if node.repetition == 1:
             duration = natural_duration
@@ -478,8 +483,8 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                 assert isinstance(subnode, lark.tree.Tree)
 
                 if subnode.data == "dot_duration":
-                    duration = Duration(Fraction(len(subnode.children), 1))
-                elif subnode.data == "ratio_duration":
+                    duration = Duration(Fraction(len(subnode.children), 1), False)
+                elif subnode.data == "ratio_duration" or subnode.data == "scale_duration":
                     ints = subnode.children[0].children
                     assert all(
                         isinstance(x, lark.lexer.Token) and x.type == "POSITIVE_INT"
@@ -491,7 +496,7 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                         ratio = Fraction(int(ints[0]), int(ints[1]))
                     else:
                         raise AssertionError(subnode.children[0])
-                    duration = Duration(ratio, subnode)
+                    duration = Duration(ratio, subnode.data == "scale_duration", subnode)
                 else:
                     raise AssertionError(subnode)
 

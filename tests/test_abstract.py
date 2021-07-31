@@ -232,7 +232,7 @@ def test_decorations():
                     Line(
                         [
                             Modified(
-                                Word("la"), 0, 0, 0, None, Duration(Fraction(3, 1)), 1
+                                Word("la"), 0, 0, 0, None, Duration(Fraction(3, 1), False), 1
                             )
                         ]
                     )
@@ -247,7 +247,7 @@ def test_decorations():
                     Line(
                         [
                             Modified(
-                                Word("la"), 0, 0, 0, None, Duration(Fraction(3, 1)), 1
+                                Word("la"), 0, 0, 0, None, Duration(Fraction(3, 1), False), 1
                             )
                         ]
                     )
@@ -262,7 +262,7 @@ def test_decorations():
                     Line(
                         [
                             Modified(
-                                Word("la"), 0, 0, 0, None, Duration(Fraction(3, 2)), 1
+                                Word("la"), 0, 0, 0, None, Duration(Fraction(3, 2), False), 1
                             )
                         ]
                     )
@@ -277,7 +277,7 @@ def test_decorations():
                     Line(
                         [
                             Modified(
-                                Word("la"), 0, 0, 0, None, Duration(Fraction(3, 2)), 1
+                                Word("la"), 0, 0, 0, None, Duration(Fraction(3, 2), False), 1
                             )
                         ]
                     )
@@ -302,7 +302,7 @@ def test_decorations():
                                 1,
                                 1,
                                 AugmentStep(1),
-                                Duration(Fraction(3, 1)),
+                                Duration(Fraction(3, 1), False),
                                 4,
                             )
                         ]
@@ -315,8 +315,8 @@ def test_decorations():
 
 def test_call():
     aug1 = AugmentStep(1)
-    dur3 = Duration(Fraction(3, 1))
-    dur32 = Duration(Fraction(3, 2))
+    dur3 = Duration(Fraction(3, 1), False)
+    dur32 = Duration(Fraction(3, 2), False)
 
     x = Modified(Word("x"), 0, 0, 0, None, None, 1)
     y = Modified(Word("y"), 0, 0, 0, None, None, 1)
@@ -397,8 +397,9 @@ def test_call():
 
 def test_modified():
     aug1 = AugmentStep(1)
-    dur3 = Duration(Fraction(3, 1))
-    dur32 = Duration(Fraction(3, 2))
+    dur3 = Duration(Fraction(3, 1), False)
+    dur32 = Duration(Fraction(3, 2), False)
+    dur32True = Duration(Fraction(3, 2), True)
 
     la = Modified(Word("la"), 0, 0, 0, None, None, 1)
 
@@ -420,12 +421,24 @@ def test_modified():
     assert abstracttree("{la la la}:3/2") == Collection(
         [UnnamedPassage([Line([Modified([la, la, la], 0, 0, 0, None, dur32, 1)])])]
     )
+    assert abstracttree("{la la la} : 3/2") == Collection(
+        [UnnamedPassage([Line([Modified([la, la, la], 0, 0, 0, None, dur32, 1)])])]
+    )
+    assert abstracttree("{la la la}:*3/2") == Collection(
+        [UnnamedPassage([Line([Modified([la, la, la], 0, 0, 0, None, dur32True, 1)])])]
+    )
+    assert abstracttree("{la la la} :* 3/2") == Collection(
+        [UnnamedPassage([Line([Modified([la, la, la], 0, 0, 0, None, dur32True, 1)])])]
+    )
     assert abstracttree("{la la la} * 4") == Collection(
         [UnnamedPassage([Line([Modified([la, la, la], 0, 0, 0, None, None, 4)])])]
     )
 
     assert abstracttree("@{la la la}'+:3/2 * 4") == Collection(
         [UnnamedPassage([Line([Modified([la, la, la], 0, 1, 1, aug1, dur32, 4)])])]
+    )
+    assert abstracttree("@{la la la}'+:*3/2 * 4") == Collection(
+        [UnnamedPassage([Line([Modified([la, la, la], 0, 1, 1, aug1, dur32True, 4)])])]
     )
 
 
@@ -921,6 +934,16 @@ def test_evaluate():
 
     assert evaluate(
         abstracttree("{do re mi}:6").passages[0], Scope({}), 0, 0, (), ()
+    ) == (
+        6.0,
+        [
+            AbstractNote(0.0, 2.0, Word("do")),
+            AbstractNote(2.0, 4.0, Word("re")),
+            AbstractNote(4.0, 6.0, Word("mi")),
+        ],
+    )
+    assert evaluate(
+        abstracttree("{do re mi}:*2").passages[0], Scope({}), 0, 0, (), ()
     ) == (
         6.0,
         [

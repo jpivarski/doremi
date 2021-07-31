@@ -27,9 +27,10 @@ upward_degree: DEGREE_UPS | DEGREE_UP INT
 downward_degree: DEGREE_DOWNS | DEGREE_DOWN INT
 ratio_tune: "%" ratio
 
-duration: dot_duration | ratio_duration
+duration: dot_duration | ratio_duration | scale_duration
 dot_duration: DOT+
 ratio_duration: ":" ratio
+scale_duration: ":*" ratio
 
 repetition: "*" POSITIVE_INT
 
