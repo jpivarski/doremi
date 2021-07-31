@@ -182,7 +182,7 @@ def test_decorations():
         ]
     )
 
-    assert abstracttree("la*2") == Collection(
+    assert abstracttree("la%2") == Collection(
         [
             UnnamedPassage(
                 [
@@ -203,7 +203,7 @@ def test_decorations():
             )
         ]
     )
-    assert abstracttree("la*2/3") == Collection(
+    assert abstracttree("la%2/3") == Collection(
         [
             UnnamedPassage(
                 [
@@ -286,11 +286,11 @@ def test_decorations():
         ]
     )
 
-    assert abstracttree("la ~ 4") == Collection(
+    assert abstracttree("la * 4") == Collection(
         [UnnamedPassage([Line([Modified(Word("la"), 0, 0, 0, None, None, 4)])])]
     )
 
-    assert abstracttree("@ la'+... ~ 4") == Collection(
+    assert abstracttree("@ la'+... * 4") == Collection(
         [
             UnnamedPassage(
                 [
@@ -378,7 +378,7 @@ def test_call():
             )
         ]
     )
-    assert abstracttree("f(x y) ~ 4") == Collection(
+    assert abstracttree("f(x y) * 4") == Collection(
         [
             UnnamedPassage(
                 [Line([Modified(Call(Word("f"), [x, y]), 0, 0, 0, None, None, 4)])]
@@ -386,7 +386,7 @@ def test_call():
         ]
     )
 
-    assert abstracttree("@f(x y)'+:3/2 ~ 4") == Collection(
+    assert abstracttree("@f(x y)'+:3/2 * 4") == Collection(
         [
             UnnamedPassage(
                 [Line([Modified(Call(Word("f"), [x, y]), 0, 1, 1, aug1, dur32, 4)])]
@@ -420,11 +420,11 @@ def test_modified():
     assert abstracttree("{la la la}:3/2") == Collection(
         [UnnamedPassage([Line([Modified([la, la, la], 0, 0, 0, None, dur32, 1)])])]
     )
-    assert abstracttree("{la la la} ~ 4") == Collection(
+    assert abstracttree("{la la la} * 4") == Collection(
         [UnnamedPassage([Line([Modified([la, la, la], 0, 0, 0, None, None, 4)])])]
     )
 
-    assert abstracttree("@{la la la}'+:3/2 ~ 4") == Collection(
+    assert abstracttree("@{la la la}'+:3/2 * 4") == Collection(
         [UnnamedPassage([Line([Modified([la, la, la], 0, 1, 1, aug1, dur32, 4)])])]
     )
 
@@ -954,13 +954,13 @@ def test_evaluate():
         ],
     )
 
-    assert evaluate(abstracttree("do ~ 2").passages[0], Scope({}), 0, 0, (), ()) == (
+    assert evaluate(abstracttree("do * 2").passages[0], Scope({}), 0, 0, (), ()) == (
         2.0,
         [AbstractNote(0.0, 1.0, Word("do")), AbstractNote(1.0, 2.0, Word("do"))],
     )
 
     assert evaluate(
-        abstracttree("do re mi ~ 2").passages[0], Scope({}), 0, 0, (), ()
+        abstracttree("do re mi * 2").passages[0], Scope({}), 0, 0, (), ()
     ) == (
         4.0,
         [
@@ -972,7 +972,7 @@ def test_evaluate():
     )
 
     assert evaluate(
-        abstracttree("{do re mi} ~ 2").passages[0], Scope({}), 0, 0, (), ()
+        abstracttree("{do re mi} * 2").passages[0], Scope({}), 0, 0, (), ()
     ) == (
         6.0,
         [

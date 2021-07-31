@@ -25,13 +25,13 @@ upward_step: STEP_UPS | STEP_UP INT
 downward_step: STEP_DOWNS | STEP_DOWN INT
 upward_degree: DEGREE_UPS | DEGREE_UP INT
 downward_degree: DEGREE_DOWNS | DEGREE_DOWN INT
-ratio_tune: "*" ratio
+ratio_tune: "%" ratio
 
 duration: dot_duration | ratio_duration
 dot_duration: DOT+
 ratio_duration: ":" ratio
 
-repetition: "~" POSITIVE_INT
+repetition: "*" POSITIVE_INT
 
 ratio: POSITIVE_INT ("/" POSITIVE_INT)?
 expression: WORD | WORD "(" args? ")" | "{" modified+ "}"

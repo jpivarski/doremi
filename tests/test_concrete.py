@@ -142,19 +142,19 @@ def test_augmentation():
     )
 
     assert (
-        doremi.compose("do * 2").notes()[0].note
+        doremi.compose("do % 2").notes()[0].note
         == doremi.compose("do'").notes()[0].note
     )
     assert (
-        doremi.compose("do * 4").notes()[0].note
+        doremi.compose("do % 4").notes()[0].note
         == doremi.compose("do''").notes()[0].note
     )
     assert (
-        doremi.compose("do * 1/2").notes()[0].note
+        doremi.compose("do % 1/2").notes()[0].note
         == doremi.compose("do,").notes()[0].note
     )
     assert (
-        doremi.compose("do * 1/4").notes()[0].note
+        doremi.compose("do % 1/4").notes()[0].note
         == doremi.compose("do,,").notes()[0].note
     )
 
