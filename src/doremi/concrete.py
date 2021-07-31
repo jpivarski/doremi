@@ -137,6 +137,9 @@ class TimedNote:
         return self.stop - self.start
 
 
+cardinal = re.compile("^([1-9][0-9]*)th$")
+
+
 @dataclass
 class Scale:
     notes: Dict[str, Note]
@@ -145,6 +148,26 @@ class Scale:
     tonic: Optional[str] = field(default=None, repr=False, compare=False, hash=False)
 
     def __getitem__(self, symbol: str) -> Note:
+        degree = None
+        if symbol == "1st":
+            degree = 0
+        elif symbol == "2nd":
+            degree = 1
+        elif symbol == "3rd":
+            degree = 2
+        m = cardinal.match(symbol)
+        if m is not None:
+            degree = int(m.group(1)) - 1
+
+        if degree is not None:
+            if degree >= len(self.notes):
+                if isinstance(symbol, lark.lexer.Token):
+                    raise doremi.abstract.UndefinedSymbol(symbol)
+                else:
+                    raise KeyError(f"symbol not found in scale: {symbol!r}")
+            else:
+                return list(self.notes.values())[degree]
+
         out = self.notes.get(symbol)
         if out is None:
             out = self.accidentals.get(symbol)

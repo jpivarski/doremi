@@ -35,7 +35,7 @@ scale_duration: ":*" ratio
 repetition: "*" POSITIVE_INT
 
 ratio: POSITIVE_INT ("/" POSITIVE_INT)?
-expression: WORD | WORD "(" args? ")" | "{" modified+ "}"
+expression: CARDINAL | WORD | WORD "(" args? ")" | "{" modified+ "}"
 args: modified+
 
 EMPHASIS: "!"
@@ -57,6 +57,7 @@ DOT: "."
 INT: /(0|[1-9][0-9]*)/
 POSITIVE_INT: /[1-9][0-9]*/
 WORD: /[\p{L}_#][\p{L}_#0-9]*/
+CARDINAL: /[0-9][\p{L}_#0-9]+/
 
 WS: /[ \t]/+
 BLANK: /(\n|\|[^\n]*\n)/

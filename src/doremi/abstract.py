@@ -635,6 +635,9 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
         if node.type == "WORD":
             return Word(node)
 
+        elif node.type == "CARDINAL":
+            return Word(node)
+
         else:
             raise AssertionError(repr(node))
 

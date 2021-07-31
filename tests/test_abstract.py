@@ -34,6 +34,9 @@ def test_decorations():
     assert abstracttree("la") == Collection(
         [UnnamedPassage([Line([Modified(Word("la"), 0, 0, 0, None, None, 1)])])]
     )
+    assert abstracttree("1st") == Collection(
+        [UnnamedPassage([Line([Modified(Word("1st"), 0, 0, 0, None, None, 1)])])]
+    )
 
     assert abstracttree("!la") == Collection(
         [UnnamedPassage([Line([Modified(Word("la"), 1, 0, 0, None, None, 1)])])]

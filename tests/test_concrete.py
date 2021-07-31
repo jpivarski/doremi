@@ -11,6 +11,14 @@ def test_show_notes():
 
 
 def test_augmentation():
+    assert doremi.compose("1st'", "C major").notes()[0].note.pitch == 60
+    assert doremi.compose("2nd'", "C major").notes()[0].note.pitch == 62
+    assert doremi.compose("3rd'", "C major").notes()[0].note.pitch == 64
+    assert doremi.compose("4th'", "C major").notes()[0].note.pitch == 65
+    assert doremi.compose("5th'", "C major").notes()[0].note.pitch == 67
+    assert doremi.compose("6th'", "C major").notes()[0].note.pitch == 69
+    assert doremi.compose("7th'", "C major").notes()[0].note.pitch == 71
+
     assert doremi.compose("do'", "C major").notes()[0].note.pitch == 60
 
     assert doremi.compose("do'+", "C major").notes()[0].note.pitch == 61
