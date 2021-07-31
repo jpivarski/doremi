@@ -285,8 +285,8 @@ class Composition:
             notes.append(
                 TimedNote(
                     note,
-                    abstract_note.start * beat_in_seconds,
-                    abstract_note.stop * beat_in_seconds,
+                    0.5 * abstract_note.start * beat_in_seconds,
+                    0.5 * abstract_note.stop * beat_in_seconds,
                     emphasis_scaling(abstract_note.emphasis, max_emphasis),
                 )
             )
