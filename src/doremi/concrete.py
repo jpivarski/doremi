@@ -9,7 +9,6 @@ import sys
 
 from fractions import Fraction
 from dataclasses import dataclass, field
-from itertools import accumulate
 from typing import List, Set, Tuple, Dict, Mapping, Optional, Union, TextIO, Callable
 
 import lark
@@ -670,9 +669,10 @@ with open(allthescales) as file:
     reader = csv.reader(file)
     next(reader)  # skip header
     for row in reader:
-        named_scale.data[row[2].lower()] = set(
-            accumulate((int(x) for x in row[3].strip()[:-1]), initial=0)
-        )
+        full = [0]
+        for x in row[3].strip()[:-1]:
+            full.append(full[-1] + int(x))
+        named_scale.data[row[2].lower()] = set(full)
 
 
 def get_scale(source: AnyScale) -> Scale:
