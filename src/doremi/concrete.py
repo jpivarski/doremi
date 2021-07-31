@@ -369,11 +369,11 @@ class Composition:
         sample_rate: int = 44100,
         dtype: object = "i2",
     ):
-        import doremi.synthesizer
+        import doremi.fluidsynth
 
         events = self.midi_events(scale, bpm)
 
-        fluidsynth = doremi.synthesizer.Fluidsynth(soundfont, sample_rate, dtype)
+        fluidsynth = doremi.fluidsynth.Fluidsynth(soundfont, sample_rate, dtype)
 
         try:
             array = fluidsynth.midi_synthesize(events)

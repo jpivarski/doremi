@@ -484,7 +484,9 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
 
                 if subnode.data == "dot_duration":
                     duration = Duration(Fraction(len(subnode.children), 1), False)
-                elif subnode.data == "ratio_duration" or subnode.data == "scale_duration":
+                elif (
+                    subnode.data == "ratio_duration" or subnode.data == "scale_duration"
+                ):
                     ints = subnode.children[0].children
                     assert all(
                         isinstance(x, lark.lexer.Token) and x.type == "POSITIVE_INT"
@@ -496,7 +498,9 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
                         ratio = Fraction(int(ints[0]), int(ints[1]))
                     else:
                         raise AssertionError(subnode.children[0])
-                    duration = Duration(ratio, subnode.data == "scale_duration", subnode)
+                    duration = Duration(
+                        ratio, subnode.data == "scale_duration", subnode
+                    )
                 else:
                     raise AssertionError(subnode)
 

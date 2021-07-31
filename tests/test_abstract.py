@@ -235,7 +235,13 @@ def test_decorations():
                     Line(
                         [
                             Modified(
-                                Word("la"), 0, 0, 0, None, Duration(Fraction(3, 1), False), 1
+                                Word("la"),
+                                0,
+                                0,
+                                0,
+                                None,
+                                Duration(Fraction(3, 1), False),
+                                1,
                             )
                         ]
                     )
@@ -250,7 +256,13 @@ def test_decorations():
                     Line(
                         [
                             Modified(
-                                Word("la"), 0, 0, 0, None, Duration(Fraction(3, 1), False), 1
+                                Word("la"),
+                                0,
+                                0,
+                                0,
+                                None,
+                                Duration(Fraction(3, 1), False),
+                                1,
                             )
                         ]
                     )
@@ -265,7 +277,13 @@ def test_decorations():
                     Line(
                         [
                             Modified(
-                                Word("la"), 0, 0, 0, None, Duration(Fraction(3, 2), False), 1
+                                Word("la"),
+                                0,
+                                0,
+                                0,
+                                None,
+                                Duration(Fraction(3, 2), False),
+                                1,
                             )
                         ]
                     )
@@ -280,7 +298,13 @@ def test_decorations():
                     Line(
                         [
                             Modified(
-                                Word("la"), 0, 0, 0, None, Duration(Fraction(3, 2), False), 1
+                                Word("la"),
+                                0,
+                                0,
+                                0,
+                                None,
+                                Duration(Fraction(3, 2), False),
+                                1,
                             )
                         ]
                     )
