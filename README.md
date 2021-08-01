@@ -130,6 +130,28 @@ c3 = 130.82  # Hz
 {"do": c3, "re": c3 * 9/8, "mi": c3 * 5/4, "fa": c3 * 4/3, "so": c3 * 3/2, "la": c3 * 5/3, "ti": c3 * 15/8}
 ```
 
+(Note: at the moment, non-equal tempered notes can't be synthesized, so a just-tempered scale can't be played.)
+
+In addition, the scale degrees can be referenced directly as `1st`, `2nd`, `3rd`, `4th`, etc. In a major scale, the following are equivalent:
+
+```
+mi mi mi do......
+```
+
+and
+
+```
+3rd 3rd 3rd 1st......
+```
+
+but set `scale="minor"` and the second becomes
+
+```
+me me me do......
+```
+
+Solfège is relative to the key, but scale degrees depend on the mode of the scale (and are good for exploring weird modes).
+
 ### Harmony
 
 Sequential notes have to be arranged on a single line without line breaks because multiple lines represent multiple voices or chords.
@@ -173,6 +195,172 @@ Basic durations are expressed as dots, with
    * four dots equivalent to a half note
    * eight dots equivalent to a whole note, etc.
 
-To allow notes shorter than an eighth note or to avoid clutter in a slow passage, durations can also be given as numbers. The number is separated from the note using a colon (sideways dots)...
+To allow notes shorter than an eighth note, to construct [tuplets](https://en.wikipedia.org/wiki/Tuplet), or to avoid clutter in a slow passage, durations can also be assigned as numbers. The number is separated from the note using a colon (sideways dots) and it can be any _fraction_ (like `1/4`, not `0.25`).
 
-Also talk about grouping (`{}`) here.
+```
+mi mi mi do:6
+```
+
+is the same as
+
+```
+mi mi mi do......
+```
+
+To modify the timing of a group of notes, enclose them in curly brackets (`{` and `}`).
+
+```
+{mi mi mi}:2 do:4
+```
+
+This grouping is a general principle: any modification that applies to a single note applies to a group of notes in curly brackets. For example, octave marks (`'` and `,` described above).
+
+```
+{ {mi mi mi}:2 do:4 }'
+```
+
+(Plays one octave higher.)
+
+The number after the colon specifies the total duration of the note or group. If, instead, you want to _multiply_ the duration by a factor, use `:*` instead of `:`. The following are equivalent:
+
+```
+{do so do le do so do se} : 6
+```
+
+and
+
+```
+{do so do le do so do se} :* 6/8
+```
+
+The first ensures that the phrase takes the time of 6 dots (eighth notes) and the second scales the time by a factor of 6/8. They're equivalent because the phrase itself adds up to 8 dots, but both are provided to avoid having to manually count it.
+
+## Repetition
+
+A note or phrase can be repeated by multiplying it (`*`). As with durations, this can apply to a single note or a group in curly brackets.
+
+```
+{do so do le do so do se} * 2
+```
+
+or
+
+```
+{do so do le do so do se} * 2
+do, * 16
+```
+
+## Augmentations
+
+The pitch of a note or a group of notes can be tweaked in three ways:
+
+   * adding or subtracting half-steps: `+`, `++`, `+3`, `-1`, `-2`, `---`, etc.
+   * shifting up or down by scale degrees: `>`, `>>`, `>3`, `<1`, `<<`, `<<<`, etc.
+   * scaling the frequency of the sound: `% 3/2` for a perfect fifth, etc.
+
+The symbols that augment by half-steps are plus (`+`) and minus (`-`), and the symbols that augment by scale degrees are greater than (`>`) and less than (`<`). In both cases, the sign can either be repeated or appear once followed by an integer.
+
+Scaling by a frequency is different: it's always a percent sign (`%`) followed by a _fraction_ (like `3/2`, not `1.5`). (Note: at the moment, non-equal tempered notes can't be synthesized, so frequency-scaled notes can't be played.)
+
+Thus, the phrase
+
+```
+do so do le do so do se
+```
+
+could have equivalently been written as
+
+```
+do so do so+1 do so do so-1
+```
+
+but if it were written as
+
+```
+do so do so>1 do so do so<1
+```
+
+then it would only be equivalent if the scale were `"chromatic"`. Scale degree augmentations are sensitive to the choice of scale; half-step augmentations are not.
+
+## Preventing augmentation
+
+Sometimes, we want to apply pitch augmentations to a group excluding some note, such as the root of the scale (`do` or `1st`). The symbol to keep a note "at where it is" is the at-sign (`@`).
+
+In the following, the `do` is _not_ affected by the `-2` and `-4`.
+
+```
+{@do do' ti la so....}
+
+{@do do' ti la so....}-2
+
+{@do do' ti la so....}-4
+
+do re mi le so....
+```
+
+(At-signs are cumulative: if two augmentations are applied to the same note, through nested grouping, `@@` would prevent all augmentation but `@` would only prevent the inner-nested augmentation.)
+
+You may be wondering why we use at-signs at all when the above could have been written as
+
+```
+do {do' ti la so....}
+
+do {do' ti la so....}-2
+
+do {do' ti la so....}-4
+
+do re mi le so....
+```
+
+The answer to that question gets at the core feature of this musical language...
+
+## Defining new symbols
+
+The 12 solfège words (or alternatively, whatever you've defined in your `scale`) and `1st`, `2nd`, `3rd`, `4th`, etc. are only the _first_ words to be defined. New ones can be added through assignment (`=`):
+
+```
+cascade = @do do' ti la so....
+
+finale = do re mi le so....
+
+cascade cascade-2 cascade-4 finale
+```
+
+These assignments are definitions, which are not played as part of the piece unless explicitly referenced. The only line in the above that gets synthesized into sound is the
+
+```
+cascade cascade-2 cascade-4 finale
+```
+
+which inserts the `cascade` phrase as though it were a note, augmenting it each time. The `finale` is also a predefined phrase, though these phrases and individual notes can be mixed.
+
+```
+cascade cascade-2 cascade-4 do re mi le so....
+```
+
+Phrases can also be played concurrently.
+
+```
+cascade cascade-2 cascade-4 do re mi le so....
+____ cascade cascade-2 cascade-4 do ra do..
+```
+
+## Defining functions
+
+Technically, a user-defined symbol is a zero-argument function. Functions take arguments, which are notes, other predefined phrases, or groups of them. Function arguments are surrounded by parentheses (`(` and `)`), but they are not separated by commas because commas are used to lower octaves. Grouping (with curly brackets) may be necessary to separate arguments.
+
+The following `cascade` is a function of the high note from which the descent starts. It expresses the same musical phrase as in the previous section in a different way.
+
+```
+cascade(start) = do start start-1 start-3 start-5....
+
+cascade(do') cascade(te) cascade(le) do re mi le so....
+```
+
+The following two argument function twists a familiar phrase around in different ways.
+
+```
+f(low high) = low high low high+1 low high low high-1
+
+f(do so) f(do-2 so-2) f(do-4 so+3) do do do....
+```
