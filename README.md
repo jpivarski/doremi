@@ -466,6 +466,8 @@ f(tmp:1 fa)
 
 but grouping with curly brackets means it can be expressed in place and doesn't need to be named.
 
+(It's also worth noting that recursion is not allowed, since it could never terminate. In the [hierarchy of programming language expressiveness](https://en.wikipedia.org/wiki/Automata_theory), this is the lowest level: [combinational logic](https://en.wikipedia.org/wiki/Combinational_logic). These programs always terminate/musical sequences always end in finite time.)
+
 ## Emphasis
 
 After pitch and duration, emphasis is a third dimension of a musical score. If we follow this line of reasoning to its logical conclusion, we'd also want to include timbre and the sounds of different kinds of instruments and we'd descend from this high-level abstraction into general composition. Therefore, Doremi has minimal syntax for emphasis: one or more exclamation points (`!`) before the note indicates a level of emphasis.
