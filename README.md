@@ -371,6 +371,8 @@ la
 I V vi IV
 ```
 
+![](https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/I-V-vi-IV_chord_progression_in_C.png/320px-I-V-vi-IV_chord_progression_in_C.png)
+
 (Perhaps these standard chord names should become built-in symbols.)
 
 ## Defining functions
