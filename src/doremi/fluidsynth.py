@@ -150,6 +150,9 @@ class Fluidsynth:
     def midi_synthesize(
         self, events: List[Tuple[float, List[Tuple[int, int]]]]
     ) -> np.ndarray:
+        if len(events) == 0:
+            return np.zeros((0, 2), self.dtype)
+
         num_seconds = events[-1][0]
         num_samples = int(self.sample_rate * num_seconds)
         array = np.zeros((num_samples, 2), self.dtype)

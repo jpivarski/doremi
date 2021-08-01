@@ -352,7 +352,7 @@ class Collection(AST):
         try:
             duration, notes = evaluate(unnamed_passages, scope, 0, 0, (), ())
         except DoremiError as err:
-            err.context = self.source
+            err.source = self.source
             raise
 
         return duration, notes, scope
@@ -647,13 +647,17 @@ def to_ast(node: Union[lark.tree.Tree, lark.lexer.Token]) -> AST:
 
 
 def abstracttree(source: str) -> AST:
-    parsingtree = doremi.parsing.parsingtree(source)
+    try:
+        parsingtree = doremi.parsing.parsingtree(source)
+    except lark.exceptions.LarkError as err:
+        raise ParsingError(err, source)
+
     assert parsingtree.data == "start"
 
     try:
         comments = list(get_comments(parsingtree))
     except DoremiError as err:
-        err.context = source
+        err.source = source
         raise
 
     for i, x in enumerate(comments):
@@ -666,7 +670,7 @@ def abstracttree(source: str) -> AST:
             if not isinstance(x, lark.lexer.Token)
         ]
     except DoremiError as err:
-        err.context = source
+        err.source = source
         raise
 
     return Collection(passages, comments, parsingtree, source)
@@ -674,35 +678,49 @@ def abstracttree(source: str) -> AST:
 
 class DoremiError(Exception):
     error_message: str
-    node: Union[lark.lexer.Token, lark.tree.Tree]
-    context: Optional[str]
+    line: int
+    column: int
+    source: Optional[str]
 
     def __str__(self) -> str:
-        out = f"{self.error_message} on line {self.node.line}"
+        if self.line <= 0:
+            return self.error_message
 
-        if self.context is None:
-            return out
         else:
-            line = self.context.splitlines()[self.node.line - 1]
+            out = f"{self.error_message} on line {self.line}"
+            if self.source is None:
+                return out
+            else:
+                line = self.source.splitlines()[self.line - 1]
 
-            return f"""{out}
+                return f"""{out}
 
     {line}
-    {"-" * (self.node.column - 1) + "^"}"""
+    {"-" * (self.column - 1) + "^"}"""
+
+
+class ParsingError(DoremiError):
+    def __init__(self, error: lark.exceptions.LarkError, source: str):
+        self.error_message = "composition could note be parsed"
+        self.line = error.line
+        self.column = error.column
+        self.source = source
 
 
 class SymbolAllUnderscores(DoremiError):
     def __init__(self, node: lark.tree.Tree):
         self.error_message = "symbols must not consist entirely of underscores (rest)"
-        self.node = node
-        self.context = None
+        self.line = node.line
+        self.column = node.column
+        self.source = None
 
 
 class RecursiveFunction(DoremiError):
     def __init__(self, node: lark.tree.Tree):
         self.error_message = f"function (indirectly?) calls itself: {str(node)!r}"
-        self.node = node
-        self.context = None
+        self.line = node.line
+        self.column = node.column
+        self.source = None
 
 
 class UndefinedSymbol(DoremiError):
@@ -710,15 +728,17 @@ class UndefinedSymbol(DoremiError):
         self.error_message = (
             f"symbol has not been defined (misspelling?): {str(node)!r}"
         )
-        self.node = node
-        self.context = None
+        self.line = node.line
+        self.column = node.column
+        self.source = None
 
 
 class MismatchingArguments(DoremiError):
     def __init__(self, node: lark.tree.Tree):
         self.error_message = "wrong number of arguments in function call"
-        self.node = node
-        self.context = None
+        self.line = node.line
+        self.column = node.column
+        self.source = None
 
 
 class NoteNotInScale(DoremiError):
@@ -726,5 +746,6 @@ class NoteNotInScale(DoremiError):
         self.error_message = (
             "cannot augment by a scale degree because this note is not in the scale"
         )
-        self.node = node
-        self.context = None
+        self.line = node.line
+        self.column = node.column
+        self.source = None

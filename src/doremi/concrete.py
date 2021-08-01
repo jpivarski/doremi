@@ -255,6 +255,9 @@ class Composition:
         ),
     ) -> List[TimedNote]:
 
+        if len(self.abstract_notes) == 0:
+            return []
+
         if scale is None:
             scale = self.scale
         else:
@@ -272,7 +275,7 @@ class Composition:
             try:
                 note = scale[abstract_note.word.val]
             except doremi.abstract.DoremiError as err:
-                err.context = self.abstract_collection.source
+                err.source = self.abstract_collection.source
                 raise
 
             if abstract_note.octave != 0:
@@ -388,10 +391,15 @@ class Composition:
         bpm: Optional[float] = None,
         soundfont: Optional[str] = None,
         sample_rate: int = 44100,
-    ):
+    ) -> "IPython.lib.display.Audio":
         import IPython.display
 
         array = self.fluidsynth(scale, bpm, soundfont, sample_rate)
+
+        if len(array) == 0:
+            raise ValueError(
+                "there aren't any notes to play (empty composition or all definitions)"
+            )
         return IPython.display.Audio(array.sum(axis=1) // 2, rate=sample_rate)
 
     def show_notes(
