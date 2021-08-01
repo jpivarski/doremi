@@ -345,6 +345,36 @@ cascade cascade-2 cascade-4 do re mi le so....
 ____ cascade cascade-2 cascade-4 do ra do..
 ```
 
+Also, new symbols can incorporate concurrent voices, such as the chords in this progression:
+
+```
+I =
+do
+mi
+so
+
+V =
+ti,
+re
+so
+
+vi =
+do
+mi
+la
+
+IV =
+do
+fa
+la
+
+I V vi IV
+```
+
+![](https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/I-V-vi-IV_chord_progression_in_C.png/320px-I-V-vi-IV_chord_progression_in_C.png)
+
+(Perhaps these standard chord names should become built-in symbols.)
+
 ## Defining functions
 
 Technically, a user-defined symbol is a zero-argument function. Functions take arguments, which are notes, other predefined phrases, or groups of them. Function arguments are surrounded by parentheses (`(` and `)`), but they are not separated by commas because commas are used to lower octaves. Grouping (with curly brackets) may be necessary to separate arguments.
