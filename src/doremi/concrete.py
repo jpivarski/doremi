@@ -300,9 +300,12 @@ class Composition:
         self,
         scale: Optional[AnyScale] = None,
         bpm: Optional[float] = None,
+        emphasis_scaling: Callable[[int, int], float] = (
+            lambda single, maximum: (single + 1) / (maximum + 1)
+        ),
     ) -> List[Tuple[float, List[Tuple[int, int]]]]:
 
-        notes = self.notes(scale, bpm)
+        notes = self.notes(scale, bpm, emphasis_scaling)
         if not all(isinstance(note.note, MIDINote) for note in notes):
             raise ValueError(
                 "midi_events can only be called if all notes are MIDINotes"
@@ -368,13 +371,16 @@ class Composition:
         self,
         scale: Optional[AnyScale] = None,
         bpm: Optional[float] = None,
+        emphasis_scaling: Callable[[int, int], float] = (
+            lambda single, maximum: (single + 1) / (maximum + 1)
+        ),
         soundfont: Optional[str] = None,
         sample_rate: int = 44100,
         dtype: object = "i2",
     ):
         import doremi.fluidsynth
 
-        events = self.midi_events(scale, bpm)
+        events = self.midi_events(scale, bpm, emphasis_scaling)
 
         fluidsynth = doremi.fluidsynth.Fluidsynth(soundfont, sample_rate, dtype)
 
@@ -389,12 +395,15 @@ class Composition:
         self,
         scale: Optional[AnyScale] = None,
         bpm: Optional[float] = None,
+        emphasis_scaling: Callable[[int, int], float] = (
+            lambda single, maximum: (single + 1) / (maximum + 1)
+        ),
         soundfont: Optional[str] = None,
         sample_rate: int = 44100,
     ) -> "IPython.lib.display.Audio":
         import IPython.display
 
-        array = self.fluidsynth(scale, bpm, soundfont, sample_rate)
+        array = self.fluidsynth(scale, bpm, emphasis_scaling, soundfont, sample_rate)
 
         if len(array) == 0:
             raise ValueError(

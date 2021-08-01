@@ -74,6 +74,7 @@ Python is the host/implementation language; Doremi is inside the quoted string. 
 
    * take a `scale` as a second argument (e.g. `"major"`, `"D minor"`, `"E Mixolydian"`, `"WholeTone"`) with 1490 modes to choose from, thanks to [allthescales.org](https://allthescales.org/). Alternatively, the scale can be constructed as a dict mapping note name (`str`) → pitch (`float` frequency or `str` note name)
    * take `bpm` (beats per minute) as a third argument (default is 120 BPM)
+   * take `emphasis_scaling` as a fourth argument (see below)
 
 and a `Composition` object can
 
@@ -377,7 +378,7 @@ I V vi IV
 
 ## Defining functions
 
-Technically, a user-defined symbol is a zero-argument function. Functions take arguments, which are notes, other predefined phrases, or groups of them. Function arguments are surrounded by parentheses (`(` and `)`), but they are not separated by commas because commas are used to lower octaves. Grouping (with curly brackets) may be necessary to separate arguments.
+Technically, a user-defined symbol is a zero-argument function. Functions take arguments, which are notes, other predefined phrases, or groups of them. Function arguments are surrounded by parentheses, but they are not separated by commas because commas are used to lower octaves. Grouping (with curly brackets) may be necessary to separate arguments.
 
 The following `cascade` is a function of the high note from which the descent starts. It expresses the same musical phrase as in the previous section in a different way.
 
@@ -387,10 +388,104 @@ cascade(start) = do start start-1 start-3 start-5....
 cascade(do') cascade(te) cascade(le) do re mi le so....
 ```
 
-The following two argument function twists a familiar phrase around in different ways.
+Here's a phrase that needs to be defined in terms of two arguments: one descends while the other mostly ascends (except at the end).
 
 ```
-f(low high) = low high low high+1 low high low high-1
+f(x y) =
+x<0 x<1 x<2 x<3 x<4 x<5 {y y>}:1 y<<
 
-f(do so) f(do-2 so-2) f(do-4 so+3) do do do....
+f(mi' fa) f(re' so) f(do' la) f(ti mi)
 ```
+
+Formally, these are functions of only one data type: notes and groups of notes. The only way to get a function call wrong (in the sense that the program cannot proceed) is to pass the wrong number of arguments. Since these arguments are separated by spaces and spaces would ordinarily denote a sequence of notes, they'd have to be grouped if one argument is intended as a sequence.
+
+```
+f(x y) =
+x<0 x<1 x<2 x<3 x<4 x<5 {y y>}:1 y<<
+
+f({mi' mi'}:1 fa)
+```
+
+In the above, `{mi' mi'}:1` (two quick notes) is the first argument, just as `mi'` previously had been, and `fa` is the second argument. Another way to perform this grouping is to define a new phrase:
+
+```
+f(x y) =
+x<0 x<1 x<2 x<3 x<4 x<5 {y y>}:1 y<<
+
+tmp = mi' mi'
+
+f(tmp:1 fa)
+```
+
+but grouping with curly brackets means it can be expressed in place and doesn't need to be named.
+
+## Emphasis
+
+After pitch and duration, emphasis is a third dimension of a musical score. If we follow this line of reasoning to its logical conclusion, we'd also want to include timbre and the sounds of different kinds of instruments and we'd descend from this high-level abstraction into general composition. Therefore, Doremi has minimal syntax for emphasis: one or more exclamation points (`!`) before the note indicates a level of emphasis.
+
+```
+mi mi mi !do......
+```
+
+or
+
+```
+!mi mi mi !!do......
+```
+
+By default, this integer is interpreted as the "MIDI velocity," which is the loudness of a note, according to this Python function:
+
+```python
+lambda single, maximum: (single + 1) / (maximum + 1)
+```
+
+That is, the notes with the maximum number of exclamation points are loudest; everything else scales proportionally with nothing at zero volume. It would be natural to scale this by a curve:
+
+```python
+lambda single, maximum: ((single + 1) / (maximum + 1))**(1/2)
+```
+
+but this is getting beyond "high-level" and "distraction-free" composition, into the details of the sounds themselves.
+
+## General syntax
+
+As described above, notes and phrases (defined as functions or enclosed in curly brackets) can be displaced by an octave, stretched in time, repeated, augmented in pitch, prevented from being augmented, and can be emphasized. The general syntax is
+
+```
+emphasis? absolute? expression octave? augmentation? duration? repetition?
+```
+
+where
+
+   * `emphasis` is an optional number of exclamation points (`!`)
+   * `absolute` is an optional number of at-signs (`@`)
+   * `expression` is a word, function call, or sequence in curly brackets (`{` and `}`)
+   * `octave` is a number of single quotes (`'`), commas (`,`), or one of these followed by a number
+   * `augmentation` is a number of plus (`+`) or minus (`-`) for half-steps, greater than (`>`) or less than (`<`) for scale degrees, or one of these followed by a number, or percent (`%`) followed by a _fraction_ (e.g. `3/2`, not `1.5`)
+   * `duration` is a number of dots (`.`), a colon (`:`) followed by _fraction_, or a colon-times (`:*`) followed by a _fraction_
+   * `repetition` is multiplication (`*`) followed by an integer.
+
+A single line of modified words represents one musical voice, a sequence of notes that follow each other in time. Multiple lines without an intervening line break represents multiple voices playing at the same time. Paragraphs separated by at least one line break represents separate phrases. If those phrases are not part of an assignment, they're played one after another.
+
+Assignment has a form like `name =` or `function(arg1 arg2) =` (no commas between arguments) before a phrase, separated by at least one line break. There can be _one_ line break after the equals sign (`=`) to line up the concurrent voices like ASCII art, but it's optional.
+
+The only syntax element that has not been mentioned yet is the comment syntax: everything after a vertical bar (`|`) is ignored:
+
+```
+| This is a comment.
+| It can go on for multiple lines.
+
+mi mi mi do......   | It can go after a line of notes.
+```
+
+If a comment appears on a blank line separating two phrases, those phrases are still separated. For instance,
+
+```
+do re mi....
+| comment
+mi re do....
+```
+
+are two phrases, _not_ played at the same time. (The comment does not "join" them, as it would in TeX.)
+
+That's everything. Have fun!
