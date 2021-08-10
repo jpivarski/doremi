@@ -678,12 +678,12 @@ def abstracttree(source: str) -> AST:
 
 class DoremiError(Exception):
     error_message: str
-    line: int
-    column: int
+    line: Optional[int]
+    column: Optional[int]
     source: Optional[str]
 
     def __str__(self) -> str:
-        if self.line <= 0:
+        if self.line is None or self.line <= 0:
             return self.error_message
 
         else:
@@ -702,24 +702,24 @@ class DoremiError(Exception):
 class ParsingError(DoremiError):
     def __init__(self, error: lark.exceptions.LarkError, source: str):
         self.error_message = "composition could note be parsed"
-        self.line = error.line
-        self.column = error.column
+        self.line = getattr(error, "line", None)
+        self.column = getattr(error, "column", None)
         self.source = source
 
 
 class SymbolAllUnderscores(DoremiError):
     def __init__(self, node: lark.tree.Tree):
         self.error_message = "symbols must not consist entirely of underscores (rest)"
-        self.line = node.line
-        self.column = node.column
+        self.line = getattr(node, "line", None)
+        self.column = getattr(node, "column", None)
         self.source = None
 
 
 class RecursiveFunction(DoremiError):
     def __init__(self, node: lark.tree.Tree):
         self.error_message = f"function (indirectly?) calls itself: {str(node)!r}"
-        self.line = node.line
-        self.column = node.column
+        self.line = getattr(node, "line", None)
+        self.column = getattr(node, "column", None)
         self.source = None
 
 
@@ -728,16 +728,16 @@ class UndefinedSymbol(DoremiError):
         self.error_message = (
             f"symbol has not been defined (misspelling?): {str(node)!r}"
         )
-        self.line = node.line
-        self.column = node.column
+        self.line = getattr(node, "line", None)
+        self.column = getattr(node, "column", None)
         self.source = None
 
 
 class MismatchingArguments(DoremiError):
     def __init__(self, node: lark.tree.Tree):
         self.error_message = "wrong number of arguments in function call"
-        self.line = node.line
-        self.column = node.column
+        self.line = getattr(node, "line", None)
+        self.column = getattr(node, "column", None)
         self.source = None
 
 
@@ -746,6 +746,6 @@ class NoteNotInScale(DoremiError):
         self.error_message = (
             "cannot augment by a scale degree because this note is not in the scale"
         )
-        self.line = node.line
-        self.column = node.column
+        self.line = getattr(node, "line", None)
+        self.column = getattr(node, "column", None)
         self.source = None
